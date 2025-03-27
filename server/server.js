@@ -1,8 +1,9 @@
 const express = require('express');
-const cors = require('cors');
+const path = require('path');
+
 
 const app = express();
-const PORT = 3001;
+const PORT = 8080;
 
 // Sert les fichiers React une fois buildés
 app.use(express.static(path.join(__dirname, '../client/dist')));
