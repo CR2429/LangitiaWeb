@@ -1,16 +1,17 @@
 const express = require('express');
 const cors = require('cors');
+
 const app = express();
+const PORT = 3001;
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public')); // Pour servir des fichiers statiques (images, icônes)
+// Sert les fichiers React une fois buildés
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
-app.get('/', (req, res) => {
-    res.send('Backend is running...');
+// Redirige tout vers index.html (React Router)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
-const PORT = 3001;
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Serveur Node lancé sur http://localhost:${PORT}`);
 });
