@@ -72,41 +72,4 @@
   to   { opacity: 1; }
 }
 
-.window-terminal {
-  position: absolute;
-  top: 60px;
-  left: 60px;
-  width: 600px;
-  height: 400px;
-  background-color: black;
-  border: 2px solid #00ffd0;
-  box-shadow: 0 0 10px #00ffd088;
-  display: flex;
-  flex-direction: column;
-  z-index: 10;
-}
 
-.window-terminal iframe {
-  flex-grow: 1;
-  width: 100%;
-  border: none;
-}
-
-.window-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #14394f;
-  border-bottom: 1px solid #00ffd0;
-  padding: 4px 8px;
-  font-family: 'Courier New', monospace;
-  color: #00ffd0;
-}
-
-.window-header button {
-  background: none;
-  border: none;
-  color: #00ffd0;
-  cursor: pointer;
-  font-size: 1rem;
-}

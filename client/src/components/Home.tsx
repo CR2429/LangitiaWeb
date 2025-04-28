@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
 import './Home.css';
-import MenuBar from '../components/MenuBar';
+import MenuBar from './MenuBar';
+import DraggableWindow from './DraggableWindow';
+import { Terminal, FileText, Image, Folder, Film } from "react-bootstrap-icons";
+
 
 type WindowData = {
     id: number;
     title: string;
     src: string;
+    x: number;
+    y: number;
+    z: number;
 };
+
 
 const Home = () => {
     const [step, setStep] = useState<'loading' | 'welcome' | 'interface'>('loading');
@@ -15,6 +22,8 @@ const Home = () => {
     const fullMessage = "Bienvenue dans le système Cartage";
     const [windows, setWindows] = useState<WindowData[]>([]);
     const [nextId, setNextId] = useState(1);
+    const [nextZ, setNextZ] = useState(1);
+
 
     // Transition : chargement → message
     useEffect(() => {
@@ -58,15 +67,29 @@ const Home = () => {
         const newWindow: WindowData = {
             id: nextId,
             title,
-            src
+            src,
+            x: window.innerWidth / 2 - 300,
+            y: window.innerHeight / 2 - 200,
+            z: nextZ,
         };
         setWindows(prev => [...prev, newWindow]);
         setNextId(prev => prev + 1);
+        setNextZ(prev => prev + 1);
     };
 
     //fermer une fenetre
     const closeWindow = (id: number) => {
         setWindows(prev => prev.filter(win => win.id !== id));
+    };
+
+    //Mettre une page au premier plan
+    const bringToFront = (id: number) => {
+        setWindows(prev => {
+            const maxZ = Math.max(...prev.map(w => w.z));
+            return prev.map(w =>
+                w.id === id ? { ...w, z: maxZ + 1 } : w
+            );
+        });
     };
 
     return (
@@ -90,14 +113,18 @@ const Home = () => {
                     )}
 
                     {/* Boucle  qui gere dynamiquement mes fenetre */}
-                    {windows.map((win) => (
-                        <div key={win.id} className="window-terminal" style={{ top: 60 + win.id * 20, left: 60 + win.id * 20 }}>
-                            <div className="window-header">
-                                <span>{win.title}</span>
-                                <button onClick={() => closeWindow(win.id)}>✕</button>
-                            </div>
-                            <iframe src={win.src} title={win.title} />
-                        </div>
+                    {windows.map(win => (
+                        <DraggableWindow
+                            key={win.id}
+                            id={win.id}
+                            title={win.title}
+                            src={win.src}
+                            x={win.x}
+                            y={win.y}
+                            z={win.z}
+                            onClose={closeWindow}
+                            onFocus={bringToFront}
+                        />
                     ))}
 
                     <MenuBar onOpenTerminal={() => openWindow("Terminal", "/terminal")} />
