@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import './Home.css';
 import MenuBar from './MenuBar';
 import DraggableWindow from './DraggableWindow';
-import { Terminal, FileText, Image, Folder, Film } from "react-bootstrap-icons";
+import { desktopFiles, FileItem } from '../object/FileSystem';
+import { FileEarmarkFont, FileEarmarkImage, FileEarmarkPlay, Folder2 } from "react-bootstrap-icons";
 
 
 type WindowData = {
@@ -92,6 +93,22 @@ const Home = () => {
         });
     };
 
+    //Mettre la bonne icone
+    const getFileIcon = (type: string, className: string) => {
+        switch (type) {
+          case 'file-text':
+            return <FileEarmarkFont className={className} />;
+          case 'file-image':
+            return <FileEarmarkImage className={className} />;
+          case 'file-video':
+            return <FileEarmarkPlay className={className} />;
+          case 'folder':
+            return <Folder2 className={className} />;
+          default:
+            return <FileEarmarkFont className={className} />;
+        }
+      };
+
     return (
         <>
             {step === 'loading' && (
@@ -111,6 +128,24 @@ const Home = () => {
                     {showWelcome && (
                         <div className="boot-welcome">{welcomeText}</div>
                     )}
+
+                    {/* gestion des icones dans le bureau */}
+                    <div className="desktop-grid">
+                        {desktopFiles.map(file => (
+                            <div
+                                key={file.id}
+                                className="desktop-icon"
+                                onClick={() => openWindow(file.name, file.url)}
+                            >
+                                <div className="icon-stack-large">
+                                    {getFileIcon(file.type, 'icon-back')}
+                                    {getFileIcon(file.type, 'icon-front')}
+                                </div>
+                                <span>{file.name}</span>
+                            </div>
+                        ))}
+                    </div>
+
 
                     {/* Boucle  qui gere dynamiquement mes fenetre */}
                     {windows.map(win => (
