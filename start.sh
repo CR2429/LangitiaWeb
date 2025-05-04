@@ -4,7 +4,7 @@ echo "🚫 Arrêt des processus existants (PM2)..."
 pm2 delete langitia-server 2>/dev/null || true
 
 echo "📥 Pull du dernier code depuis Git..."
-git pull
+git reset --hard origin/main
 
 echo "📦 Mise à jour des dépendances dans /client..."
 cd client
