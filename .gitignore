@@ -52,3 +52,7 @@ __pycache__/
 venv/
 env/
 .Python
+
+# password
+/server/SQL_password.txt
+/server/user.json

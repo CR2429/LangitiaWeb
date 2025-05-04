@@ -93,7 +93,7 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
     >
       <div className="window-header" onPointerDown={startDrag} style={{ touchAction: 'none', cursor: 'move' }}>
         <span>{title}</span>
-        <button onPointerDown={e => e.stopPropagation()} onClick={() => onClose(id)}>✕</button>
+        <button onPointerDown={e => e.stopPropagation()} onClick={() => onClose(id)}>X</button>
       </div>
       <iframe src={src} title={title} style={{ width: '100%', height: '100%' }} />
       <div className="resize-handle" onPointerDown={startResize} style={{ touchAction: 'none', cursor: 'se-resize' }} />

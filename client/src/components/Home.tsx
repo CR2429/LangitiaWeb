@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import './Home.css';
 import MenuBar from './MenuBar';
 import DraggableWindow from './DraggableWindow';
-import { desktopFiles, FileItem } from '../object/FileSystem';
+import { desktopFiles } from '../object/FileSystem';
 import { FileEarmarkFont, FileEarmarkImage, FileEarmarkPlay, Folder2 } from "react-bootstrap-icons";
 
 
@@ -24,7 +24,45 @@ const Home = () => {
     const [windows, setWindows] = useState<WindowData[]>([]);
     const [nextId, setNextId] = useState(1);
     const [nextZ, setNextZ] = useState(1);
+    const [showLoginDiv, setShowLoginDiv] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [username, setUsername] = useState('');
 
+    // Vérifier login local + backend
+    useEffect(() => {
+        const checkLogin = async () => {
+            const token = localStorage.getItem('authToken');
+            const savedUser = localStorage.getItem('authUser');
+
+            if (token && savedUser) {
+                setIsLoggedIn(true);
+                setUsername(savedUser);
+
+                try {
+                    const res = await fetch('/api/validate-token', {
+                        method: 'GET',
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+
+                    if (res.ok) {
+                        setIsLoggedIn(true);
+                    } else {
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('authUser');
+                        setIsLoggedIn(false);
+                        setUsername('');
+                    }
+                } catch (err) {
+                    console.error('Erreur de validation du token :', err);
+                }
+            } else {
+                setIsLoggedIn(false);
+                setUsername('');
+            }
+        };
+
+        checkLogin();
+    }, []);
 
     // Transition : chargement → message
     useEffect(() => {
@@ -93,21 +131,69 @@ const Home = () => {
         });
     };
 
+    //Page de login - Open
+    const handleOpenLogin = () => {
+        setShowLoginDiv(true);
+    };
+
+    //Page de login - Close
+    const handleCloseLogin = () => {
+        setShowLoginDiv(false);
+    };
+
+    //Page de login - Submit
+    const handleLoginSubmit = async (event: React.FormEvent) => {
+        event.preventDefault();
+        const user = (event.target as any).elements.user.value;
+        const password = (event.target as any).elements.password.value;
+
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user, password }),
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('authUser', user);
+                setUsername(user);
+                setIsLoggedIn(true);
+            } else {
+                alert(`Erreur : ${data.message}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erreur lors de la connexion.');
+        }
+    };
+
+    //Page de login - Logout
+    const handleLogout = () => {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        setIsLoggedIn(false);
+        setUsername('');
+        alert('Déconnexion réussie.');
+        setShowLoginDiv(false);
+    };
+
     //Mettre la bonne icone
     const getFileIcon = (type: string, className: string) => {
         switch (type) {
-          case 'file-text':
-            return <FileEarmarkFont className={className} />;
-          case 'file-image':
-            return <FileEarmarkImage className={className} />;
-          case 'file-video':
-            return <FileEarmarkPlay className={className} />;
-          case 'folder':
-            return <Folder2 className={className} />;
-          default:
-            return <FileEarmarkFont className={className} />;
+            case 'file-text':
+                return <FileEarmarkFont className={className} />;
+            case 'file-image':
+                return <FileEarmarkImage className={className} />;
+            case 'file-video':
+                return <FileEarmarkPlay className={className} />;
+            case 'folder':
+                return <Folder2 className={className} />;
+            default:
+                return <FileEarmarkFont className={className} />;
         }
-      };
+    };
 
     return (
         <>
@@ -162,7 +248,33 @@ const Home = () => {
                         />
                     ))}
 
-                    <MenuBar onOpenTerminal={() => openWindow("Terminal", "/terminal")} />
+                    {/* Div login */}
+                    {showLoginDiv && (
+                        <div className="login-modal">
+                            <div className="window-header">
+                                <span>Connexion</span>
+                                <button onClick={handleCloseLogin}>X</button>
+                            </div>
+                            {isLoggedIn ? (
+                                <div className="login-modal-content">
+                                    <p>Connecté en tant que <strong>{username}</strong></p>
+                                    <button onClick={handleLogout}>Se déconnecter</button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleLoginSubmit} className="login-modal-content">
+                                    <input type="text" name="user" placeholder="Nom d’utilisateur" required />
+                                    <input type="password" name="password" placeholder="Mot de passe" required />
+                                    <button type="submit">Se connecter</button>
+                                </form>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Barre de menu */}
+                    <MenuBar
+                        onOpenTerminal={() => openWindow("Terminal", "/terminal")}
+                        onOpenLogin={handleOpenLogin}
+                    />
                 </div>
             )}
         </>

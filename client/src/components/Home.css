@@ -130,3 +130,54 @@
   color: #00ffd0;
   z-index: 1;
 }
+
+.login-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  height: 250px;
+  background-color: black;
+  border: 2px solid #00ffd0;
+  box-shadow: 0 0 10px #00ffd0;
+  display: flex;
+  flex-direction: column;
+  z-index: 9999;
+  font-family: 'Courier New', monospace;
+  color: #00ffd0;
+}
+
+.login-modal-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #0e2a3b;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-modal-content input {
+  margin: 8px 0;
+  padding: 6px;
+  width: 80%;
+  background-color: #14394f;
+  border: 1px solid #00ffd0;
+  color: #00ffd0;
+  font-family: 'Courier New', monospace;
+}
+
+.login-modal-content button {
+  margin-top: 12px;
+  padding: 6px 12px;
+  background-color: #14394f;
+  border: 1px solid #00ffd0;
+  color: #00ffd0;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+}
+
+.login-modal-content button:hover {
+  background-color: #00ffd0;
+  color: black;
+}
