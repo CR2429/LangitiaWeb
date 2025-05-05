@@ -4,6 +4,7 @@ const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
+const cors = require('cors');
 
 const app = express();
 const PORT = 8080;

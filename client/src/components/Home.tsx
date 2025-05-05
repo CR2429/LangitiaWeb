@@ -212,7 +212,6 @@ const Home = () => {
         localStorage.removeItem('authUser');
         setIsLoggedIn(false);
         setUsername('');
-        alert('Déconnexion réussie.');
         setShowLoginDiv(false);
     };
 
