@@ -5,6 +5,7 @@ pm2 delete langitia-server 2>/dev/null || true
 
 echo "📥 Pull du dernier code depuis Git..."
 git reset --hard origin/main
+git pull
 
 echo "📦 Mise à jour des dépendances dans /client..."
 cd client
