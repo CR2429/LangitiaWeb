@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import './Home.css';
 import MenuBar from './MenuBar';
 import DraggableWindow from './DraggableWindow';
-import { desktopFiles } from '../object/FileSystem';
+import { FileItem, fetchFilesByPath } from '../object/FileSystem';
 import { FileEarmarkFont, FileEarmarkImage, FileEarmarkPlay, Folder2 } from "react-bootstrap-icons";
+import ContextMenu from './ContextMenu';
 
 
 type WindowData = {
@@ -27,6 +28,29 @@ const Home = () => {
     const [showLoginDiv, setShowLoginDiv] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [username, setUsername] = useState('');
+    const [desktopFiles, setDesktopFiles] = useState<FileItem[]>([]);
+    const [filesLoading, setFilesLoading] = useState(true);
+    const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
+
+    // Faire apparaitre le menu contextuel
+    useEffect(() => {
+        const handleContextMenu = (event: MouseEvent) => {
+            event.preventDefault();
+            setContextMenu({ visible: true, x: event.clientX, y: event.clientY });
+        };
+
+        const handleClick = () => {
+            setContextMenu((prev) => ({ ...prev, visible: false }));
+        };
+
+        document.addEventListener('contextmenu', handleContextMenu);
+        document.addEventListener('click', handleClick);
+
+        return () => {
+            document.removeEventListener('contextmenu', handleContextMenu);
+            document.removeEventListener('click', handleClick);
+        };
+    }, []);
 
     // Vérifier login local + backend
     useEffect(() => {
@@ -100,6 +124,19 @@ const Home = () => {
             };
         }
     }, [showWelcome]);
+
+    //Recuperer les fichiers et dossier
+    useEffect(() => {
+        if (step === 'interface') {
+            const loadFiles = async () => {
+                setFilesLoading(true);
+                const files = await fetchFilesByPath('/home');
+                setDesktopFiles(files);
+                setFilesLoading(false);
+            };
+            loadFiles();
+        }
+    }, [step]);
 
     //Ouvrire une nouvelle fenetre
     const openWindow = (title: string, src: string) => {
@@ -257,7 +294,7 @@ const Home = () => {
                             </div>
                             {isLoggedIn ? (
                                 <div className="login-modal-content">
-                                    <p>Connecté en tant que <strong>{username}</strong></p>
+                                    <p style={{ textAlign: "center", marginBottom: "10px" }}>Connecté en tant que <strong>{username}</strong></p>
                                     <button onClick={handleLogout}>Se déconnecter</button>
                                 </div>
                             ) : (
@@ -274,6 +311,16 @@ const Home = () => {
                     <MenuBar
                         onOpenTerminal={() => openWindow("Terminal", "/terminal")}
                         onOpenLogin={handleOpenLogin}
+                    />
+
+                    {/* Menu contextuel */}
+                    <ContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        visible={contextMenu.visible}
+                        isLoggedIn={isLoggedIn}
+                        onClose={() => setContextMenu((prev) => ({ ...prev, visible: false }))}
+                        onOpenTerminal={() => openWindow("Terminal", "/terminal")}
                     />
                 </div>
             )}

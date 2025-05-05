@@ -61,6 +61,52 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+//recuperer les informations d'un fichier
+app.get('/api/file', async (req, res) => {
+  const { id } = req.query;
+
+  if (!id) {
+      return res.status(400).json({ error: 'Missing file ID' });
+  }
+
+  try {
+      const [rows] = await db.query(
+          'SELECT id, name, type, content, url, path FROM files WHERE id = ? LIMIT 1',
+          [id]
+      );
+
+      if (rows.length === 0) {
+          return res.status(404).json({ error: 'File not found' });
+      }
+
+      res.json(rows[0]);
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch file' });
+  }
+});
+
+//recuperer plusieur fichier par rapport a la route
+app.get('/api/files', async (req, res) => {
+  const { path } = req.query;
+
+  if (!path) {
+      return res.status(400).json({ error: 'Missing path parameter' });
+  }
+
+  try {
+      const [rows] = await db.query(
+          'SELECT id, name, type, content, url, path FROM files WHERE path = ?',
+          [path]
+      );
+      res.json(rows);
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch files' });
+  }
+});
+
+
 // Sert les fichiers React une fois buildés
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
