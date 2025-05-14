@@ -1,46 +1,76 @@
 import React, { useState, useRef, useEffect } from 'react';
+import './Terminal.css';
 
-interface TerminalProps {
-  token: string;
-}
+const Terminal: React.FC = () => {
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem('authUser') || 'unlog';
+  });
 
-const Terminal: React.FC<TerminalProps> = ({ token }) => {
-  const [output, setOutput] = useState<React.ReactNode[]>([]);
-  const [input, setInput] = useState('');
-  const [username] = useState('unlog');
+  const [systemName] = useState('CartageOS');
   const [currentPath] = useState('/home');
-  const terminalEndRef = useRef<HTMLDivElement>(null);
+  const [userInput, setUserInput] = useState('');
+  const [output, setOutput] = useState<React.ReactNode[]>([]);
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [cursorIndex, setCursorIndex] = useState(0);
 
+
+  const terminalEndRef = useRef<HTMLDivElement>(null);
+  const hiddenInputRef = useRef<HTMLTextAreaElement>(null);
+  const token = localStorage.getItem('authToken') || '';
+  const prompt = `${username}@${systemName}: ${currentPath} $`;
+
+  useEffect(() => {
+    hiddenInputRef.current?.focus();
+  }, [userInput]);
 
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [output]);
 
   useEffect(() => {
-    const root = document.getElementById('root');
-    if (root) {
-      root.style.width = '100vw';
-      root.style.height = '100vh';
-      root.style.margin = '0';
-      root.style.padding = '0';
-    }
+    const syncUsername = () => {
+      const storedUser = localStorage.getItem('authUser') || 'unlog';
+      setUsername(storedUser);
+    };
+
+    window.addEventListener('storage', syncUsername);
+    return () => window.removeEventListener('storage', syncUsername);
   }, []);
 
-  const handleCommand = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (input.trim() === '') return;
+  const handleCommand = async (command: string) => {
+    if (!command.trim()) return;
 
     const promptElement = (
-      <div>
-        <span style={{ color: '#8add38', fontWeight: 'bold' }}>{username}@langitia.com</span>
-        <span style={{ color: '#5f98ce', fontWeight: 'bold', paddingRight: '8px' }}>: {currentPath} $</span>
-        <span>{input}</span>
+      <div className="line">
+        <span className="prompt">
+          <span className="user">{username}</span>
+          @
+          <span className="host">{systemName}</span>
+          : <span className="path">{currentPath}</span> $
+        </span>
+        <span className="input"> {command}</span>
       </div>
     );
 
-    setOutput((prev) => [...prev, promptElement]);
+    setOutput(prev => [...prev, promptElement]);
+    setHistory(prev => [...prev, command]);
+    setHistoryIndex(-1);
+    setIsWaiting(true);
+
+    // commande spéciale : login
+    if (command.startsWith('login ')) {
+      const newUser = command.split(' ')[1];
+      setUsername(newUser);
+      setOutput(prev => [...prev, `Utilisateur connecté : ${newUser}`]);
+      setUserInput('');
+      setIsWaiting(false);
+      return;
+    }
 
     try {
+      console.log('Token utilisé :', token);
       const response = await fetch('/api/terminal', {
         method: 'POST',
         credentials: 'include',
@@ -48,69 +78,101 @@ const Terminal: React.FC<TerminalProps> = ({ token }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ command: input, path: currentPath })
+        body: JSON.stringify({ command, path: currentPath })
       });
 
-      if (!response.ok) {
-        throw new Error('Erreur serveur');
-      }
-
-      const data = await response.json();
-      setOutput((prev) => [...prev, data.output]);
+      const data = await response.ok ? await response.json() : { output: `Erreur : ${response.statusText}` };
+      setOutput(prev => [...prev, data.output]);
     } catch (error: any) {
-      setOutput((prev) => [...prev, `Erreur : ${error.message}`]);
+      setOutput(prev => [...prev, `Erreur : ${error.message}`]);
     }
 
-    setInput('');
+    setUserInput('');
+    setIsWaiting(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isWaiting) return;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleCommand(userInput);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (history.length > 0) {
+        const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
+        setUserInput(history[newIndex]);
+        setHistoryIndex(newIndex);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (history.length > 0) {
+        const newIndex = historyIndex === -1 ? -1 : Math.min(history.length - 1, historyIndex + 1);
+        if (newIndex >= 0) {
+          setUserInput(history[newIndex]);
+          setHistoryIndex(newIndex);
+        } else {
+          setUserInput('');
+          setHistoryIndex(-1);
+        }
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setCursorIndex((prev) => Math.max(0, prev - 1));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setCursorIndex((prev) => Math.min(userInput.length, prev + 1));
+    }
+  };
+
+  const updateUserInput = (text: string) => {
+    setUserInput(text);
+    setCursorIndex(text.length);
   };
 
   return (
-    <div style={{
-      backgroundColor: 'black',
-      color: 'white',
-      fontFamily: 'monospace',
-      fontSize: '13pt',
-      width: '100%',
-      height: '100%',
-      margin: 0,
-      padding: '1em',
-      boxSizing: 'border-box',
-      overflowY: 'auto'
-    }}>
-      <div id="output">
+    <div className="terminal-container" onClick={() => hiddenInputRef.current?.focus()}>
+      <div className="terminal-output">
         {output.map((line, index) => (
           <div key={index}>{line}</div>
         ))}
+        <div className="line">
+          <span className="prompt">
+            <span className="user">{username}</span>
+            @
+            <span className="host">{systemName}</span>
+            : <span className="path">{currentPath}</span> $
+          </span>
+          <span className="input">
+            {userInput.slice(0, cursorIndex)}
+            <span className="cursor" />
+            {userInput.slice(cursorIndex)}
+          </span>
+        </div>
         <div ref={terminalEndRef} />
       </div>
-      <form onSubmit={handleCommand} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-        <div id="prompt" style={{ whiteSpace: 'nowrap', userSelect: 'none' }}>
-          <span style={{ color: '#8add38', fontWeight: 'bold' }}>{username}@langitia.com</span>
-          <span style={{ color: '#5f98ce', fontWeight: 'bold', paddingRight: '8px' }}>: {currentPath} $ </span>
-        </div>
-        <div style={{ flexGrow: 1 }}>
-          <input
-            id="cmdline"
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            style={{
-              width: '100%',
-              outline: 'none',
-              backgroundColor: 'transparent',
-              margin: 0,
-              font: 'inherit',
-              border: 'none',
-              color: 'inherit'
-            }}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-            autoFocus
-          />
-        </div>
-      </form>
+
+      {/* Invisible textarea to capture input */}
+      <textarea
+        ref={hiddenInputRef}
+        value={userInput}
+        onChange={(e) => {
+          const newText = e.target.value;
+          const diff = newText.length - userInput.length;
+
+          // ajuster en fonction de l'action à la position du curseur
+          const newIndex = cursorIndex + diff;
+          setUserInput(newText);
+          setCursorIndex(Math.max(0, Math.min(newText.length, newIndex)));
+        }}
+        onKeyDown={handleKeyDown}
+        className="hidden-textarea"
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="off"
+        autoFocus
+      />
+
     </div>
   );
 };

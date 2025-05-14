@@ -1,0 +1,74 @@
+.terminal-container {
+  background-color: black;
+  color: white;
+  font-family: monospace;
+  font-size: 13pt;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  padding: 1em;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.terminal-output {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  line-height: 1.4;
+}
+
+.prompt .user {
+  color: #8add38;
+  font-weight: bold;
+}
+.prompt .host {
+  color: #8add38;
+  font-weight: bold;
+}
+.prompt .path {
+  color: #5f98ce;
+  font-weight: bold;
+}
+.prompt {
+  margin-right: 5px;
+}
+
+.input {
+  color: white;
+  flex-grow: 1;
+}
+
+.hidden-textarea {
+  position: absolute;
+  opacity: 0;
+  left: 0;
+  top: 0;
+  height: 1px;
+  width: 1px;
+  resize: none;
+  overflow: hidden;
+  font: inherit;
+}
+
+.cursor {
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  background-color: white;
+  animation: blink 1s step-start infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}

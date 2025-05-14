@@ -5,7 +5,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
-const SECRET_KEY = 'ta_cle_ultra_secrete';
+const SECRET_KEY = process.env.JWT_TOKEN_KEY;
 
 // Fonction pour reset les utilisateurs
 router.post('/reset-users', async (req, res) => {
@@ -46,7 +46,7 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Mot de passe incorrect' });
         }
 
-        const token = jwt.sign({ userId: dbUser.id }, SECRET_KEY, { expiresIn: '1h' });
+        const token = jwt.sign({ userId: dbUser.id }, SECRET_KEY);
         res.json({ message: 'Connexion réussie', token });
     } catch (err) {
         console.error(err);
