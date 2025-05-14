@@ -1,10 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const Terminal = () => {
-  const [output, setOutput] = useState([]);
+interface TerminalProps {
+  token: string;
+}
+
+const Terminal: React.FC<TerminalProps> = ({ token }) => {
+  const [output, setOutput] = useState<React.ReactNode[]>([]);
   const [input, setInput] = useState('');
-  const [username, setUsername] = useState('unlog');
-  const terminalEndRef = useRef(null);
+  const [username] = useState('unlog');
+  const [currentPath] = useState('/home');
+  const terminalEndRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -20,39 +26,41 @@ const Terminal = () => {
     }
   }, []);
 
-  const handleCommand = (e) => {
+  const handleCommand = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (input.trim() === '') return;
 
-    const promptLine = (
+    const promptElement = (
       <div>
         <span style={{ color: '#8add38', fontWeight: 'bold' }}>{username}@langitia.com</span>
-        <span style={{ color: '#5f98ce', fontWeight: 'bold', paddingInline: '8px' }}> : /home $ </span>
+        <span style={{ color: '#5f98ce', fontWeight: 'bold', paddingRight: '8px' }}>: {currentPath} $</span>
         <span>{input}</span>
       </div>
     );
 
-    const newOutput = [...output, promptLine];
+    setOutput((prev) => [...prev, promptElement]);
 
-    if (input === 'help') {
-      newOutput.push(<div>Available commands: help, clear, user</div>);
-    } else if (input === 'clear') {
-      setOutput([]);
-      setInput('');
-      return;
-    } else if (input.startsWith('user ')) {
-      const newUser = input.split(' ')[1];
-      if (newUser) {
-        setUsername(newUser);
-        newOutput.push(<div>Switched user to {newUser}</div>);
-      } else {
-        newOutput.push(<div>Usage: user &lt;username&gt;</div>);
+    try {
+      const response = await fetch('/api/terminal', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ command: input, path: currentPath })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur serveur');
       }
-    } else {
-      newOutput.push(<div>Command not found: {input}</div>);
+
+      const data = await response.json();
+      setOutput((prev) => [...prev, data.output]);
+    } catch (error: any) {
+      setOutput((prev) => [...prev, `Erreur : ${error.message}`]);
     }
 
-    setOutput(newOutput);
     setInput('');
   };
 
@@ -65,7 +73,7 @@ const Terminal = () => {
       width: '100%',
       height: '100%',
       margin: 0,
-      padding: '0.1em 1.5em 1em 1em',
+      padding: '1em',
       boxSizing: 'border-box',
       overflowY: 'auto'
     }}>
@@ -78,7 +86,7 @@ const Terminal = () => {
       <form onSubmit={handleCommand} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
         <div id="prompt" style={{ whiteSpace: 'nowrap', userSelect: 'none' }}>
           <span style={{ color: '#8add38', fontWeight: 'bold' }}>{username}@langitia.com</span>
-          <span style={{ color: '#5f98ce', fontWeight: 'bold', paddingInline: '8px' }}> : /home $ </span>
+          <span style={{ color: '#5f98ce', fontWeight: 'bold', paddingRight: '8px' }}>: {currentPath} $ </span>
         </div>
         <div style={{ flexGrow: 1 }}>
           <input
