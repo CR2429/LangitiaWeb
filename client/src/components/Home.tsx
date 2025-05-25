@@ -131,12 +131,49 @@ const Home = () => {
             const loadFiles = async () => {
                 setFilesLoading(true);
                 const files = await fetchFilesByPath('/home');
-                setDesktopFiles(files);
+
+                // Tri alphabétique
+                const sortedFiles = files.sort((a, b) =>
+                    a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
+                );
+
+                setDesktopFiles(sortedFiles);
                 setFilesLoading(false);
             };
             loadFiles();
         }
     }, [step]);
+
+    //update toute les 2 minutes
+    useEffect(() => {
+        if (step !== 'interface') return;
+
+        const interval = setInterval(async () => {
+            try {
+                const latestFiles = await fetchFilesByPath('/home');
+
+                // Tri alphabétique
+                const sortedFiles = latestFiles.sort((a, b) =>
+                    a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
+                );
+
+                const currentIds = desktopFiles.map(f => f.id).sort().join(',');
+                const newIds = sortedFiles.map(f => f.id).sort().join(',');
+
+                if (currentIds !== newIds) {
+                    setDesktopFiles(sortedFiles);
+                    console.log('✅ Mise à jour du bureau détectée');
+                } else {
+                    console.log('🟢 Aucun changement détecté');
+                }
+
+            } catch (err) {
+                console.error('Erreur pendant la vérification des fichiers :', err);
+            }
+        }, 120000);
+
+        return () => clearInterval(interval);
+    }, [step, desktopFiles]);
 
     //Ouvrire une nouvelle fenetre
     const openWindow = (title: string, src: string) => {
