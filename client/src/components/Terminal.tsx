@@ -2,37 +2,148 @@ import React, { useState, useRef, useEffect } from 'react';
 import './Terminal.css';
 
 const Terminal: React.FC = () => {
-  const [username, setUsername] = useState(() => {
-    return localStorage.getItem('authUser') || 'unlog';
-  });
-
+  const [username, setUsername] = useState(() => localStorage.getItem('authUser') || 'unlog');
   const [systemName] = useState('CartageOS');
   const [currentPath, setCurrentPath] = useState('/home');
-  const [userInput, setUserInput] = useState('');
-  const [output, setOutput] = useState<React.ReactNode[]>([]);
-  const [isWaiting, setIsWaiting] = useState(false);
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [text, setText] = useState('');
   const [cursorIndex, setCursorIndex] = useState(0);
   const [hasFocus, setHasFocus] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editorContent, setEditorContent] = useState('');
-  const [editorFilename, setEditorFilename] = useState('');
-  const [editorAppendOnly, setEditorAppendOnly] = useState(false);
+  const [output, setOutput] = useState<React.ReactNode[]>([]);
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
+  const [nanoMode, setNanoMode] = useState(false);
+  const [nanoText, setNanoText] = useState('');
+  const [nanoFilename, setNanoFilename] = useState('');
+  const [nanoAppendOnly, setNanoAppendOnly] = useState(false);
+
+  const terminalRef = useRef<HTMLDivElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
-  const hiddenInputRef = useRef<HTMLTextAreaElement>(null);
   const token = localStorage.getItem('authToken') || '';
-  const prompt = `${username}@${systemName}: ${currentPath} $`;
 
+  const prompt = (
+    <>
+      <span className="prompt-user-host">{username}@CartageOS:</span>
+      <span className="prompt-path">~{currentPath} $ </span>
+    </>
+  );
+
+  // Focus sur clic
   useEffect(() => {
-    hiddenInputRef.current?.focus();
-  }, [userInput]);
+    const handleClick = () => terminalRef.current?.focus();
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
 
+  // Gestion clavier
   useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [output]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!hasFocus) return;
 
+      scrollToBottom();
+
+      // === MODE NANO ===
+      if (nanoMode) {
+        if (e.ctrlKey && e.key === 's') {
+          e.preventDefault();
+          fetch('/api/terminal/nano', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              filename: nanoFilename,
+              path: currentPath,
+              content: nanoText,
+            }),
+          }).then(() => {
+            setNanoMode(false);
+            setNanoText('');
+            setNanoFilename('');
+          });
+          return;
+        }
+
+        if (e.ctrlKey && e.key === 'q') {
+          e.preventDefault();
+          setNanoMode(false);
+          setNanoText('');
+          setNanoFilename('');
+          return;
+        }
+
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          setNanoText(prev => prev.slice(0, -1));
+        } else if (e.key.length === 1) {
+          e.preventDefault();
+          setNanoText(prev => prev + e.key);
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          setNanoText(prev => prev + '\n');
+        }
+
+        return;
+      }
+
+      // === TERMINAL NORMAL ===
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        executeCommand(text);
+        return;
+      }
+
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const before = text.slice(0, cursorIndex);
+        const after = text.slice(cursorIndex);
+        const newText = before + e.key + after;
+        setText(newText);
+        setCursorIndex(cursorIndex + 1);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        if (cursorIndex > 0) {
+          const before = text.slice(0, cursorIndex - 1);
+          const after = text.slice(cursorIndex);
+          setText(before + after);
+          setCursorIndex(cursorIndex - 1);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setCursorIndex((prev) => Math.max(0, prev - 1));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setCursorIndex((prev) => Math.min(text.length, prev + 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (history.length > 0) {
+          const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
+          setText(history[newIndex]);
+          setCursorIndex(history[newIndex].length);
+          setHistoryIndex(newIndex);
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (history.length > 0) {
+          const newIndex = historyIndex === -1 ? -1 : Math.min(history.length - 1, historyIndex + 1);
+          if (newIndex >= 0) {
+            setText(history[newIndex]);
+            setCursorIndex(history[newIndex].length);
+          } else {
+            setText('');
+            setCursorIndex(0);
+          }
+          setHistoryIndex(newIndex);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasFocus, nanoMode, text, cursorIndex, nanoText, nanoFilename, currentPath, history, historyIndex]);
+
+  // Mettre a jour le nom de l'utilisateur
   useEffect(() => {
     const syncUsername = () => {
       const storedUser = localStorage.getItem('authUser') || 'unlog';
@@ -43,228 +154,137 @@ const Terminal: React.FC = () => {
     return () => window.removeEventListener('storage', syncUsername);
   }, []);
 
-  // CTRL + S pour sauvegarder avec nano
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      if (editorOpen && e.ctrlKey && e.key === 's') {
-        e.preventDefault();
+  // Scroll down
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+  };
 
-        await fetch('/api/terminal/nano', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: editorFilename,
-            path: currentPath,
-            content: editorContent
-          })
-        });
-
-        setEditorOpen(false);
-        setEditorContent('');
-        setEditorFilename('');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editorOpen, editorContent, editorFilename, currentPath]);
-
-  // traiter la commande
-  const handleCommand = async (command: string) => {
-    if (!command.trim()) return;
-
-    // affichage du prompre (exemple => CR2429@CartageOS : /home $)
-    const promptElement = (
-      <div className="line">
-        <span className="prompt">
-          <span className="user">{username}</span>
-          @
-          <span className="host">{systemName}</span>
-          : <span className="path">{currentPath}</span> $
-        </span>
-        <span className="input"> {command}</span>
-      </div>
+  // Executer les commandes
+  const executeCommand = async (command: string) => {
+    // Ajoute la ligne avec le prompt et la commande tapée
+    const commandLine = (
+      <p className="terminal-line">
+        <span className="prompt-user-host">{username}@{systemName}:</span>
+        <span className="prompt-path">~{currentPath} $ </span>
+        <span>{command}</span>
+      </p>
     );
-
-    setOutput(prev => [...prev, promptElement]);
-    setHistory(prev => [...prev, command]);
-    setHistoryIndex(-1);
-    setIsWaiting(true);
+    setOutput(prev => [...prev, commandLine]);
 
     try {
-      //envoie de la requete a l'api
-      console.log('Token utilisé :', token);
       const response = await fetch('/api/terminal', {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ command, path: currentPath })
+        body: JSON.stringify({ command, path: currentPath }),
       });
 
-      //traitement de la requete
       const data = await response.ok ? await response.json() : { output: `Erreur : ${response.statusText}` };
 
-      // commande cd
-      if (data.newPath) {
-        setCurrentPath(data.newPath);
-      }
+      if (data.newPath) setCurrentPath(data.newPath);
 
-      // commande nano
       if (data.action === 'openEditor') {
-        setEditorOpen(true);
-        setEditorFilename(data.filename);
+        if (data.appendOnly) {
+          setNanoText('');
+          setNanoFilename(data.filename);
+          setNanoAppendOnly(true);
+          setNanoMode(true);
+          setText('');
+          setHistory(prev => [...prev.filter(c => c !== command), command]);
+          setHistoryIndex(-1);
+          setCursorIndex(0);
+          return;
+        }
 
         const fileRes = await fetch(`/api/terminal/nano?filename=${data.filename}&path=${currentPath}`);
         const fileData = await fileRes.json();
 
-        const initial = fileData.appendOnly ? (fileData.content + '\n') : fileData.content;
-        setEditorContent(initial);
-        setEditorAppendOnly(fileData.appendOnly);
-      } else if (data.output) {
-        // autre commande
-        setOutput(prev => [...prev, data.output]);
+        const initial = fileData.appendOnly ? fileData.content + '\n' : fileData.content;
+        setNanoText(initial);
+        setNanoFilename(data.filename);
+        setNanoAppendOnly(fileData.appendOnly);
+        setNanoMode(true);
+        setText('');
+        setHistory(prev => [...prev.filter(c => c !== command), command]);
+        setHistoryIndex(-1);
+        setCursorIndex(0);
+        return;
       }
-    } catch (error: any) {
-      setOutput(prev => [...prev, `Erreur : ${error.message}`]);
+
+      if (data.output) {
+        const lines = String(data.output).split('\n');
+        const outputLines = lines.map((line, index) => (
+          <p key={`out-${index}`} className="terminal-line">{line}</p>
+        ));
+        setOutput(prev => [...prev, ...outputLines]);
+      }
+
+    } catch (err) {
+      setOutput(prev => [...prev, <p className="terminal-line">Erreur : {(err as Error).message}</p>]);
     }
 
-    setUserInput('');
-    setIsWaiting(false);
+    setHistory(prev => [...prev.filter(c => c !== command), command]);
+    setHistoryIndex(-1);
+    setText('');
+    setCursorIndex(0);
+    scrollToBottom();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isWaiting) return;
-
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleCommand(userInput);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (history.length > 0) {
-        const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
-        setUserInput(history[newIndex]);
-        setHistoryIndex(newIndex);
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (history.length > 0) {
-        const newIndex = historyIndex === -1 ? -1 : Math.min(history.length - 1, historyIndex + 1);
-        if (newIndex >= 0) {
-          setUserInput(history[newIndex]);
-          setHistoryIndex(newIndex);
-        } else {
-          setUserInput('');
-          setHistoryIndex(-1);
-        }
-      }
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      setCursorIndex((prev) => Math.max(0, prev - 1));
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      setCursorIndex((prev) => Math.min(userInput.length, prev + 1));
-    }
+  // Render text with cursor
+  const renderCurrentLine = () => {
+    const before = text.slice(0, cursorIndex);
+    const after = text.slice(cursorIndex);
+    return (
+      <>
+        {prompt}
+        <span>{before}</span>
+        <span className="cursor"></span>
+        <span>{after}</span>
+      </>
+    );
   };
 
   return (
-    <div className="terminal-container" onClick={() => hiddenInputRef.current?.focus()}>
-      <div className="terminal-output">
-        {output.map((line, index) => (
-          <div key={index}>{line}</div>
-        ))}
-        <div className="line">
-          <span className="prompt">
-            <span className="user">{username}</span>
-            @
-            <span className="host">{systemName}</span>
-            : <span className="path">{currentPath}</span> $
-          </span>
-          <span className="input">
-            {userInput.slice(0, cursorIndex)}
-            {hasFocus && <span className="cursor" />}
-            {userInput.slice(cursorIndex)}
-          </span>
-        </div>
-        <div ref={terminalEndRef} />
-      </div>
+    <div
+      className="terminal-container"
+      tabIndex={0}
+      ref={terminalRef}
+      onFocus={() => setHasFocus(true)}
+      onBlur={() => setHasFocus(false)}
+    >
+      {!nanoMode && output.map((line, index) => (
+        <div key={index}>{line}</div>
+      ))}
+      {!nanoMode && renderCurrentLine()}
+      {nanoMode && (
+        <>
+          {(() => {
+            const lines = nanoText.split('\n');
+            const lastLine = lines.pop() || '';
+            return (
+              <>
+                {lines.map((line, i) => (
+                  <p key={`nano-line-${i}`} className="nano-line">{line}</p>
+                ))}
+                <p className="nano-line">
+                  {lastLine}
+                  <span className="cursor" />
+                </p>
+              </>
+            );
+          })()}
 
-      {/* Invisible textarea to capture input */}
-      <textarea
-        ref={hiddenInputRef}
-        value={userInput}
-        onChange={(e) => {
-          const newText = e.target.value;
-          const diff = newText.length - userInput.length;
-
-          // ajuster en fonction de l'action à la position du curseur
-          const newIndex = cursorIndex + diff;
-          setUserInput(newText);
-          setCursorIndex(Math.max(0, Math.min(newText.length, newIndex)));
-        }}
-        onKeyDown={handleKeyDown}
-        className="hidden-textarea"
-        spellCheck={false}
-        autoCorrect="off"
-        autoCapitalize="off"
-        autoFocus
-        onFocus={() => setHasFocus(true)}
-        onBlur={() => setHasFocus(false)}
-        disabled={editorOpen}
-      />
-
-      {/* ✅ ÉDITEUR NANO PAR DESSUS */}
-      {editorOpen && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: '#000',
-          zIndex: 999,
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <textarea
-            autoFocus
-            value={editorContent}
-            onChange={(e) => {
-              if (editorAppendOnly) {
-                const lines = editorContent.split('\n');
-                const preserved = lines.slice(0, -1).join('\n') + '\n';
-                const newValue = e.target.value;
-                if (!newValue.startsWith(preserved)) return;
-              }
-              setEditorContent(e.target.value);
-            }}
-            style={{
-              flexGrow: 1,
-              backgroundColor: '#000',
-              color: '#fff',
-              fontFamily: 'monospace',
-              border: 'none',
-              resize: 'none',
-              padding: '10px',
-              fontSize: '14px',
-              outline: 'none',
-            }}
-          />
-          <div style={{
-            backgroundColor: '#111',
-            color: '#ccc',
-            textAlign: 'center',
-            padding: '6px',
-            fontFamily: 'monospace',
-            fontSize: '13px'
-          }}>
-            CTRL + S : Quitter et Sauvegarder
+          <div className="nano-instructions-fixed">
+            CTRL+S: Sauvegarder | CTRL+Q: Quitter
           </div>
-        </div>
-      )}
 
+        </>
+      )}
+      <div ref={terminalEndRef} />
     </div>
   );
 };

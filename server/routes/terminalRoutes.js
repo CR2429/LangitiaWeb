@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../db');
 const { getUserIdFromToken } = require('../utils/auth');
 const { v4: uuidv4 } = require('uuid');
+const { DateTime } = require('luxon');
 
 const router = express.Router();
 
@@ -169,11 +170,15 @@ router.post('/terminal', async (req, res) => {
             if (!filename || !/\.(txt|md|log)$/.test(filename)) {
                 return res.json({ output: 'Erreur : fichier invalide. Utilisez .txt, .md ou .log' });
             }
+ 
+            // Détection du mode appendOnly
+            const isAppendOnly = filename.endsWith('.log');
 
             // Envoyer une requête pour afficher l'interface de modification
             return res.json({
                 action: 'openEditor',
-                filename: filename
+                filename: filename,
+                appendOnly: isAppendOnly // true uniquement pour .log
             });
         }
 
@@ -220,10 +225,12 @@ router.get('/terminal/nano', async (req, res) => {
 router.post('/terminal/nano', async (req, res) => {
     const { filename, path, content } = req.body;
 
+    // verifier le nom du fichier
     if (!filename || !/\.(txt|md|log)$/.test(filename)) {
         return res.status(400).json({ error: 'Nom de fichier invalide.' });
     }
 
+    //verifier le login
     let userId;
     try {
         userId = getUserIdFromToken(req);
@@ -232,31 +239,76 @@ router.post('/terminal/nano', async (req, res) => {
     }
 
     try {
+        // recuperer le user
+        const [userRows] = await pool.query('SELECT user FROM users WHERE id = ?', [userId]);
+        const username = userRows.length > 0 ? userRows[0].username : 'inconnu';
+
+        // verifie si le fichier exite deja
         const [rows] = await pool.query(
             'SELECT id, content FROM files WHERE name = ? AND path = ?',
             [filename, path]
         );
 
+        const isLogFile = filename.endsWith('.log');
+
+        // creer le fichier
         if (rows.length === 0) {
-            // Création d’un nouveau fichier
             const fileId = uuidv4();
-            await pool.query(
-                'INSERT INTO files (id, name, type, url, path, content) VALUES (?, ?, ?, ?, ?, ?)',
-                [fileId, filename, 'file-text', `/file/${fileId}`, path, content]
-            );
+
+            if (isLogFile) { // fichier log
+                const entry = {
+                    message: content.trim(),
+                    date: DateTime.local().toISO(), // ✅ pas de setZone ici
+                    user: username
+                };
+
+                await pool.query(
+                    'INSERT INTO files (id, name, type, url, path, content) VALUES (?, ?, ?, ?, ?, ?)',
+                    [fileId, filename, 'file-text', `/file/${fileId}`, path, JSON.stringify([entry], null, 2)]
+                );
+            } else {
+                await pool.query(
+                    'INSERT INTO files (id, name, type, url, path, content) VALUES (?, ?, ?, ?, ?, ?)',
+                    [fileId, filename, 'file-text', `/file/${fileId}`, path, content]
+                );
+            }
+
+            // modifier un fichier
         } else {
             const existing = rows[0];
-            const newContent = filename.endsWith('.log')
-                ? (existing.content || '') + '\n' + content
-                : content;
 
-            await pool.query(
-                'UPDATE files SET content = ? WHERE id = ?',
-                [newContent, existing.id]
-            );
+            if (isLogFile) { // fichier log
+                let entries = [];
+                try {
+                    entries = JSON.parse(existing.content || '[]');
+                    if (!Array.isArray(entries)) entries = [];
+                } catch {
+                    entries = [];
+                }
+
+                const newEntry = {
+                    message: content.trim(),
+                    date: DateTime.local().toISO(), // ✅ horodatage serveur
+                    user: username
+                };
+
+                entries.push(newEntry);
+
+                await pool.query(
+                    'UPDATE files SET content = ? WHERE id = ?',
+                    [JSON.stringify(entries, null, 2), existing.id]
+                );
+
+            } else {
+                await pool.query(
+                    'UPDATE files SET content = ? WHERE id = ?',
+                    [content, existing.id]
+                );
+            }
         }
 
         res.json({ success: true });
+
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Erreur lors de l\'enregistrement du fichier.' });
