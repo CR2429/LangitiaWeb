@@ -9,6 +9,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const fileRoutes = require('./routes/fileRoutes');
 const terminalRoutes = require('./routes/terminalRoutes');
+const raspberryRoutes = require('./routes/raspberryRoutes');
 
 const app = express();
 const PORT = 8080;
@@ -23,6 +24,7 @@ app.use(cors({
 app.use('/api', authRoutes);
 app.use('/api', fileRoutes);
 app.use('/api', terminalRoutes);
+app.use('/api', raspberryRoutes);
 
 // Sert les fichiers React une fois buildés
 app.use(express.static(path.join(__dirname, '../client/dist')));

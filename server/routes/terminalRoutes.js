@@ -170,7 +170,7 @@ router.post('/terminal', async (req, res) => {
             if (!filename || !/\.(txt|md|log)$/.test(filename)) {
                 return res.json({ output: 'Erreur : fichier invalide. Utilisez .txt, .md ou .log' });
             }
- 
+
             // Détection du mode appendOnly
             const isAppendOnly = filename.endsWith('.log');
 
@@ -181,7 +181,50 @@ router.post('/terminal', async (req, res) => {
                 appendOnly: isAppendOnly // true uniquement pour .log
             });
         }
+        //
+        // METTRE WAKE_ON_LAN À TRUE
+        //
+        case 'wake_on_lan': {
+            let userId;
+            try {
+                userId = getUserIdFromToken(req);
+            } catch (err) {
+                return res.status(401).json({ output: `Erreur : ${err.message}` });
+            }
 
+            try {
+                await pool.query("UPDATE raspberry SET value = 'true' WHERE `key` = 'wake_on_lan'");
+                return res.json({ output: '✅ wake_on_lan défini sur true.' });
+            } catch (err) {
+                console.error(err);
+                return res.status(500).json({ output: '❌ Erreur lors de la mise à jour de wake_on_lan.' });
+            }
+        }
+
+        //
+        // AFFICHER LES INFOS DE LA TABLE RASPBERRY
+        //
+        case 'raspberry': {
+            let userId;
+            try {
+                userId = getUserIdFromToken(req);
+            } catch (err) {
+                return res.status(401).json({ output: `Erreur : ${err.message}` });
+            }
+
+            try {
+                const [rows] = await pool.query("SELECT `key`, `value` FROM raspberry");
+                if (rows.length === 0) {
+                    return res.json({ output: 'ℹ️ Aucune donnée dans la table raspberry.' });
+                }
+
+                const formatted = rows.map(row => `${row.key}: ${row.value}`).join('\n');
+                return res.json({ output: formatted });
+            } catch (err) {
+                console.error(err);
+                return res.status(500).json({ output: '❌ Erreur lors de la lecture de la table raspberry.' });
+            }
+        }
         //
         // MESSAGE D'ERREUR
         //
