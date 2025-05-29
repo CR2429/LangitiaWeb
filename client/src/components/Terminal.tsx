@@ -15,7 +15,6 @@ const Terminal: React.FC = () => {
   const [nanoMode, setNanoMode] = useState(false);
   const [nanoText, setNanoText] = useState('');
   const [nanoFilename, setNanoFilename] = useState('');
-  const [nanoAppendOnly, setNanoAppendOnly] = useState(false);
 
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -61,6 +60,9 @@ const Terminal: React.FC = () => {
             setNanoMode(false);
             setNanoText('');
             setNanoFilename('');
+          }).catch((err) => {
+            console.error('Erreur lors de l’enregistrement :', err);
+            alert("Erreur lors de l'enregistrement du fichier.");
           });
           return;
         }
@@ -191,7 +193,6 @@ const Terminal: React.FC = () => {
         if (data.appendOnly) {
           setNanoText('');
           setNanoFilename(data.filename);
-          setNanoAppendOnly(true);
           setNanoMode(true);
           setText('');
           setHistory(prev => [...prev.filter(c => c !== command), command]);
@@ -206,7 +207,6 @@ const Terminal: React.FC = () => {
         const initial = fileData.appendOnly ? fileData.content + '\n' : fileData.content;
         setNanoText(initial);
         setNanoFilename(data.filename);
-        setNanoAppendOnly(fileData.appendOnly);
         setNanoMode(true);
         setText('');
         setHistory(prev => [...prev.filter(c => c !== command), command]);

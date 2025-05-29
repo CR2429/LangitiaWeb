@@ -1,36 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const SECRET_KEY = process.env.JWT_TOKEN_KEY;
+const rateLimit = require('express-rate-limit');
 
-// Fonction pour reset les utilisateurs
-router.post('/reset-users', async (req, res) => {
-    try {
-        const data = fs.readFileSync(path.join(__dirname, '../user.json'), 'utf8');
-        const users = JSON.parse(data);
-
-        await pool.query('DELETE FROM users');
-        for (const user of users) {
-            const hashedPassword = await bcrypt.hash(user.password, 10);
-            await pool.query(
-                'INSERT INTO users (user, password) VALUES (?, ?)',
-                [user.user, hashedPassword]
-            );
-        }
-
-        res.json({ message: `✅ ${users.length} utilisateurs réinitialisés.` });
-    } catch (err) {
-        console.error('Erreur lors du reset des utilisateurs :', err);
-        res.status(500).json({ message: 'Erreur lors du reset des utilisateurs' });
-    }
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,              // max 5 tentatives
+  message: 'Trop de tentatives de connexion. Réessayez dans une minute.',
 });
 
 // Route login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
     const { user, password } = req.body;
 
     try {

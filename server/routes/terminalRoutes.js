@@ -13,6 +13,10 @@ router.post('/terminal', async (req, res) => {
         return res.status(400).json({ output: 'Aucune commande reçue.' });
     }
 
+    if (typeof command !== 'string' || typeof path !== 'string') {
+        return res.status(400).json({ output: 'Requête invalide.' });
+    }
+
     const parts = command.trim().split(/\s+/);
     const commande = parts[0];
     const args = parts.slice(1);
@@ -300,7 +304,7 @@ router.post('/terminal/nano', async (req, res) => {
 
             if (isLogFile) { // fichier log
                 const entry = {
-                    message: content.trim(),
+                    message: content,
                     date: DateTime.local().toISO(), // ✅ pas de setZone ici
                     user: username
                 };
@@ -330,7 +334,7 @@ router.post('/terminal/nano', async (req, res) => {
                 }
 
                 const newEntry = {
-                    message: content.trim(),
+                    message: content,
                     date: DateTime.local().toISO(), // ✅ horodatage serveur
                     user: username
                 };

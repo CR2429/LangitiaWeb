@@ -29,7 +29,6 @@ const Home = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [username, setUsername] = useState('');
     const [desktopFiles, setDesktopFiles] = useState<FileItem[]>([]);
-    const [filesLoading, setFilesLoading] = useState(true);
     const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
 
     // Faire apparaitre le menu contextuel
@@ -129,7 +128,6 @@ const Home = () => {
     useEffect(() => {
         if (step === 'interface') {
             const loadFiles = async () => {
-                setFilesLoading(true);
                 const files = await fetchFilesByPath('/home');
 
                 // Tri alphabétique
@@ -138,7 +136,6 @@ const Home = () => {
                 );
 
                 setDesktopFiles(sortedFiles);
-                setFilesLoading(false);
             };
             loadFiles();
         }
@@ -264,7 +261,7 @@ const Home = () => {
             case 'folder':
                 return <Folder2 className={className} />;
             default:
-                return <FileEarmarkFont className={className} />;
+                return <div />;
         }
     };
 
