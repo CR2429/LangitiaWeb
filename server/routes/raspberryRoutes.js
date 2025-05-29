@@ -3,7 +3,8 @@ const pool = require('../db');
 const { DateTime } = require('luxon');
 const router = express.Router();
 
-const AUTHORIZED_TOKENS = process.env.AUTHORIZED_TOKENS;
+// Un seul token autorisé
+const AUTHORIZED_TOKEN = process.env.AUTHORIZED_TOKEN;
 
 router.get('/raspberry/ping', async (req, res) => {
     const token = req.query.token;
