@@ -232,7 +232,7 @@ router.post('/terminal', async (req, res) => {
             return res.json({ output: `La commande "${commande}" n'existe pas.` });
     }
 });
-
+ 
 router.get('/terminal/nano', async (req, res) => {
     const { filename, path } = req.query;
 
