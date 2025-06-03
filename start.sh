@@ -23,7 +23,7 @@ echo "🚀 Démarrage du serveur Node.js avec PM2..."
 pm2 start server.js --name langitia-server
 
 echo "🤖 Démarrage du bot Node.js avec PM2..."
-cd ../bot_dicord
+cd ./bot_discord
 npm install
 pm2 start bot.js --name langitia-bot
 
