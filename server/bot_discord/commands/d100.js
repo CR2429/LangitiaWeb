@@ -3,12 +3,18 @@ const { SlashCommandBuilder } = require('discord.js');
 const dice = require('../dice');
 
 function formatBoxedMessage(label, value) {
+  const boxWidth = 20;
+  const totalPadding = boxWidth - label.length;
+  const paddingStart = Math.floor(totalPadding / 2);
+  const paddingEnd = totalPadding - paddingStart;
+  const centeredLabel = ' '.repeat(paddingStart) + label + ' '.repeat(paddingEnd);
+  
   return [
     '```',
     '╔══════════════════════╗',
     `║    Jet d'un d100     ║`,
     '╟──────────────────────╢',
-    `║ ${label.padEnd(22)}║`,
+    `║ ${centeredLabel} ║`,
     '╚══════════════════════╝',
     '```'
   ].join('\n');
@@ -20,7 +26,7 @@ module.exports = {
     .setDescription('Lance un dé 100 et affiche un message stylé'),
 
   async execute(interaction) {
-    const result = dice.d100(interaction);
+    const result = await dice.d100(interaction);
     let message;
 
     if (result === 1) {

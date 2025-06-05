@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client, Collection, GatewayIntentBits, Events } = require('discord.js');
 const { createStartupButton, setupButtonInteraction } = require('./start-button.js');
+const moment = require('moment-timezone');
 
 const envPath = __dirname + '/../../.env';
 require('dotenv').config({ path: envPath });
@@ -40,6 +41,16 @@ client.on(Events.InteractionCreate, async interaction => {
 
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
+
+  const user = interaction.user;
+  const displayName = user.globalName ?? user.username;
+  const now = moment().tz('America/Toronto').format('YYYY-MM-DD HH:mm:ss z');
+
+  console.log(`📥 Commande utilisée : /${interaction.commandName}`);
+  console.log(`👤 Utilisateur       : ${displayName} (${user.id})`);
+  console.log(`🕒 Date/Heure        : ${now}`);
+  console.log('----------------------------');
+
 
   try {
     await command.execute(interaction);
