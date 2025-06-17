@@ -190,3 +190,31 @@
   background-color: #00ffd0;
   color: black;
 }
+
+
+.boot-text {
+  font-size: 1.2rem;
+  margin-top: 1rem;
+  color: #00ffd0;
+}
+
+.boot-text a {
+  color: #4affff;
+  text-decoration: underline;
+}
+
+.boot-button {
+  margin-top: 2rem;
+  padding: 10px 20px;
+  font-size: 1.1rem;
+  background-color: #4affff;
+  color: #000;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.boot-button:hover {
+  background-color: #00ffd0;
+}

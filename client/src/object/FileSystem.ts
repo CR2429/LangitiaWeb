@@ -4,12 +4,19 @@ export type FileItem = {
     type: 'file-text' | 'file-image' | 'file-video' | 'folder';
     content?: string;
     url: string;
-    path: string;    
+    path: string;
 };
 
 export async function fetchFilesByPath(path: string): Promise<FileItem[]> {
     try {
-        const response = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+        const token = localStorage.getItem('authToken') || '';
+        const response = await fetch(`/api/files?path=${encodeURIComponent(path)}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+        });
         if (!response.ok) {
             throw new Error(`Failed to fetch files: ${response.statusText}`);
         }

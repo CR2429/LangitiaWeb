@@ -3,7 +3,7 @@ import { Terminal, PersonSquare } from "react-bootstrap-icons";
 
 interface MenuBarProps {
   onOpenTerminal: () => void;
-  onOpenLogin: () => void; 
+  onOpenLogin: () => void;
 }
 
 const MenuBar = ({ onOpenTerminal, onOpenLogin }: MenuBarProps) => {

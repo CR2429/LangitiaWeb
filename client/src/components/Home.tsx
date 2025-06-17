@@ -18,7 +18,9 @@ type WindowData = {
 
 
 const Home = () => {
-    const [step, setStep] = useState<'loading' | 'welcome' | 'interface'>('loading');
+    const [step, setStep] = useState<'boot' | 'interface'>(
+        localStorage.getItem('protocolApproved') === 'true' ? 'interface' : 'boot'
+    );
     const [welcomeText, setWelcomeText] = useState('');
     const [showWelcome, setShowWelcome] = useState(false);
     const fullMessage = "Bienvenue dans le système Cartage";
@@ -88,14 +90,14 @@ const Home = () => {
     }, []);
 
     // Transition : chargement → message
-    useEffect(() => {
-        if (step === 'loading') {
-            setTimeout(() => {
-                setStep('interface');
-                setShowWelcome(true);
-            }, 3000);
-        }
-    }, [step]);
+    // useEffect(() => {
+    //     if (step === 'loading') {
+    //         setTimeout(() => {
+    //             setStep('interface');
+    //             setShowWelcome(true);
+    //         }, 3000);
+    //     }
+    // }, [step]);
 
     // Affichage du message lettre par lettre
     useEffect(() => {
@@ -141,7 +143,7 @@ const Home = () => {
         }
     }, [step]);
 
-    //update toute les 2 minutes
+    //update toute les minutes
     useEffect(() => {
         if (step !== 'interface') return;
 
@@ -167,7 +169,7 @@ const Home = () => {
             } catch (err) {
                 console.error('Erreur pendant la vérification des fichiers :', err);
             }
-        }, 120000);
+        }, 60000);
 
         return () => clearInterval(interval);
     }, [step, desktopFiles]);
@@ -265,17 +267,26 @@ const Home = () => {
         }
     };
 
+    //clique sur le bouton de connexion
+    const handleApproveProtocol = () => {
+        localStorage.setItem('protocolApproved', 'true');
+        setStep('interface');
+    };
+
+
     return (
         <>
-            {step === 'loading' && (
+            {step === 'boot' && (
                 <div className="main-interface">
-                    <div className='boot-screen'>
-                        <h2>Initialisation du système Cartage...</h2>
-                        <div className="loader-bar">
-                            <div className="loader-progress" />
-                        </div>
+                    <div className="boot-screen">
+                        <h2>Bienvenue dans le système Cartage</h2>
+                        <p className="boot-text">
+                            En cliquant sur <strong>Connexion au système</strong>, vous reconnaissez avoir lu et accepté les <a href="/protocoles_de_securite" target="_blank" rel="noopener noreferrer">Protocoles de Sécurité</a>.
+                        </p>
+                        <button className="boot-button" onClick={handleApproveProtocol}>
+                            Connexion au système
+                        </button>
                     </div>
-
                 </div>
             )}
 

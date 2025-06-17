@@ -13,6 +13,7 @@ const terminalRoutes = require('./routes/terminalRoutes');
 const raspberryRoutes = require('./routes/raspberryRoutes');
 
 const app = express();
+const logIpMiddleware = require('./middleware/logIp');
 const PORT = 8080;
 
 app.disable('x-powered-by');
@@ -29,6 +30,7 @@ app.use(helmet());
 resetUsersOnStartup();
 
 // redirection des routes
+app.use(logIpMiddleware);
 app.use('/api', authRoutes);
 app.use('/api', fileRoutes);
 app.use('/api', terminalRoutes);
