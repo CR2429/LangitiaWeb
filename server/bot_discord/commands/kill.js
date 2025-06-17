@@ -13,18 +13,19 @@ module.exports = {
       console.log("🔴 Kill command exécutée par le propriétaire.");
       await interaction.client.destroy(); // équivalent de bot.close()
 
-      // Arrêt propre via PM2
-      exec('pm2 stop bot-discord', (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Erreur PM2 : ${error.message}`);
-          return;
-        }
-        console.log(`stdout: ${stdout}`);
-        console.error(`stderr: ${stderr}`);
-        // Optionnel : process.exit(0) si tu veux forcer l'arrêt
-      });
+      // Attendre un peu pour s'assurer que le reply est bien envoyé
+      setTimeout(() => {
+        exec('pm2 stop bot-discord', (error, stdout, stderr) => {
+          console.log("Tentative d'exécution de pm2 stop");
+          if (error) {
+            console.error(`Erreur PM2 : ${error.message}`);
+            return;
+          }
+          console.log(`stdout: ${stdout}`);
+          console.error(`stderr: ${stderr}`);
+        });
+      }, 1000);
 
-      process.exit(0);
     } else {
       await interaction.reply({
         content: ':middle_finger: :middle_finger: :middle_finger:',
