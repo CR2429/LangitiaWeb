@@ -12,6 +12,18 @@ module.exports = {
       await interaction.reply('Le bot est kill');
       console.log("🔴 Kill command exécutée par le propriétaire.");
       await interaction.client.destroy(); // équivalent de bot.close()
+
+      // Arrêt propre via PM2
+      exec('pm2 stop bot-discord', (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Erreur PM2 : ${error.message}`);
+          return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+        // Optionnel : process.exit(0) si tu veux forcer l'arrêt
+      });
+
       process.exit(0);
     } else {
       await interaction.reply({
