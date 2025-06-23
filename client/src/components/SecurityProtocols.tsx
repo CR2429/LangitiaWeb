@@ -4,12 +4,12 @@ function SecurityProtocols() {
   const [htmlContent, setHtmlContent] = useState<string>('');
 
   // 🔧 Change ici la version du protocole
-  const latestVersion = '1.0';
+  const latestVersion = 'v1.1.html';
 
   useEffect(() => {
     const fetchProtocol = async () => {
       try {
-        const response = await fetch(`public/protocoles_de_securite/v${latestVersion}.html`);
+        const response = await fetch(`/protocoles_de_securite/${latestVersion}`);
         if (!response.ok) throw new Error('Fichier introuvable.');
         const content = await response.text();
         setHtmlContent(content);
