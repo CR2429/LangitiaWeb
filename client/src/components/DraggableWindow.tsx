@@ -96,7 +96,8 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
         <button onPointerDown={e => e.stopPropagation()} onClick={() => onClose(id)}>X</button>
       </div>
       <iframe 
-        src={src} 
+        src={src}
+        onPointerEnter={() => onFocus(id)}
         title={title} 
         style={{ 
           flexGrow : 1, 

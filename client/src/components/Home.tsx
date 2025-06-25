@@ -198,6 +198,7 @@ const Home = () => {
     const bringToFront = (id: number) => {
         setWindows(prev => {
             const maxZ = Math.max(...prev.map(w => w.z));
+            setNextZ(prev => prev + 1);
             return prev.map(w =>
                 w.id === id ? { ...w, z: maxZ + 1 } : w
             );

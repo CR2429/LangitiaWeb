@@ -36,116 +36,157 @@ const Terminal: React.FC = () => {
 
   // Gestion clavier
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!hasFocus) return;
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (!hasFocus) return;
 
-      scrollToBottom();
+    scrollToBottom();
 
-      // === MODE NANO ===
-      if (nanoMode) {
-        if (e.ctrlKey && e.key === 's') {
-          e.preventDefault();
-          fetch('/api/terminal/nano', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              filename: nanoFilename,
-              path: currentPath,
-              content: nanoText,
-            }),
-          }).then(() => {
-            setNanoMode(false);
-            setNanoText('');
-            setNanoFilename('');
-          }).catch((err) => {
-            console.error('Erreur lors de l’enregistrement :', err);
-            alert("Erreur lors de l'enregistrement du fichier.");
-          });
-          return;
-        }
-
-        if (e.ctrlKey && e.key === 'q') {
-          e.preventDefault();
+    // === MODE NANO ===
+    if (nanoMode) {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        fetch('/api/terminal/nano', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            filename: nanoFilename,
+            path: currentPath,
+            content: nanoText,
+          }),
+        }).then(() => {
           setNanoMode(false);
           setNanoText('');
           setNanoFilename('');
-          return;
-        }
-
-        if (e.key === 'Backspace') {
-          e.preventDefault();
-          setNanoText(prev => prev.slice(0, -1));
-        } else if (e.key.length === 1) {
-          e.preventDefault();
-          setNanoText(prev => prev + e.key);
-        } else if (e.key === 'Enter') {
-          e.preventDefault();
-          setNanoText(prev => prev + '\n');
-        }
-
+        }).catch((err) => {
+          console.error('Erreur lors de l’enregistrement :', err);
+          alert("Erreur lors de l'enregistrement du fichier.");
+        });
         return;
       }
-      // === TERMINAL NORMAL ===
-      else {
-        
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          executeCommand(text);
-          return;
-        }
-        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          e.preventDefault();
-          const before = text.slice(0, cursorIndex);
-          const after = text.slice(cursorIndex);
-          const newText = before + e.key + after;
-          setText(newText);
-          setCursorIndex(cursorIndex + 1);
-        } else if (e.key === 'Backspace') {
-          e.preventDefault();
-          if (cursorIndex > 0) {
-            const before = text.slice(0, cursorIndex - 1);
-            const after = text.slice(cursorIndex);
-            setText(before + after);
-            setCursorIndex(cursorIndex - 1);
-          }
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          setCursorIndex((prev) => Math.max(0, prev - 1));
-        } else if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          setCursorIndex((prev) => Math.min(text.length, prev + 1));
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          if (history.length > 0) {
-            const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
-            setText(history[newIndex]);
-            setCursorIndex(history[newIndex].length);
-            setHistoryIndex(newIndex);
-          }
-        } else if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          if (history.length > 0) {
-            const newIndex = historyIndex === -1 ? -1 : Math.min(history.length - 1, historyIndex + 1);
-            if (newIndex >= 0) {
-              setText(history[newIndex]);
-              setCursorIndex(history[newIndex].length);
-            } else {
-              setText('');
-              setCursorIndex(0);
-            }
-            setHistoryIndex(newIndex);
-          }
-        }
+
+      if (e.ctrlKey && e.key === 'q') {
+        e.preventDefault();
+        setNanoMode(false);
+        setNanoText('');
+        setNanoFilename('');
+        return;
       }
 
-    };
+      if (e.ctrlKey && e.key.toLowerCase() === 'v') {
+        // Laisse le paste handler gérer ça
+        return;
+      }
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasFocus, nanoMode, text, cursorIndex, nanoText, nanoFilename, currentPath, history, historyIndex]);
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        setNanoText(prev => prev.slice(0, -1));
+      } else if (e.key.length === 1) {
+        e.preventDefault();
+        setNanoText(prev => prev + e.key);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        setNanoText(prev => prev + '\n');
+      }
+
+      return;
+    }
+
+    // === TERMINAL NORMAL ===
+    if (e.ctrlKey && e.key.toLowerCase() === 'v') {
+      // Laisse le paste handler gérer ça
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeCommand(text);
+      return;
+    }
+
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      const before = text.slice(0, cursorIndex);
+      const after = text.slice(cursorIndex);
+      const newText = before + e.key + after;
+      setText(newText);
+      setCursorIndex(cursorIndex + 1);
+    } else if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (cursorIndex > 0) {
+        const before = text.slice(0, cursorIndex - 1);
+        const after = text.slice(cursorIndex);
+        setText(before + after);
+        setCursorIndex(cursorIndex - 1);
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setCursorIndex((prev) => Math.max(0, prev - 1));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setCursorIndex((prev) => Math.min(text.length, prev + 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (history.length > 0) {
+        const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
+        setText(history[newIndex]);
+        setCursorIndex(history[newIndex].length);
+        setHistoryIndex(newIndex);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (history.length > 0) {
+        const newIndex = historyIndex === -1 ? -1 : Math.min(history.length - 1, historyIndex + 1);
+        if (newIndex >= 0) {
+          setText(history[newIndex]);
+          setCursorIndex(history[newIndex].length);
+        } else {
+          setText('');
+          setCursorIndex(0);
+        }
+        setHistoryIndex(newIndex);
+      }
+    }
+  };
+
+  const handlePaste = (e: ClipboardEvent) => {
+    const pasted = e.clipboardData?.getData('text') || '';
+    if (!pasted) return;
+
+    e.preventDefault();
+
+    if (nanoMode) {
+      setNanoText(prev => prev + pasted);
+    } else {
+      const before = text.slice(0, cursorIndex);
+      const after = text.slice(cursorIndex);
+      setText(before + pasted + after);
+      setCursorIndex(cursorIndex + pasted.length);
+    }
+
+    scrollToBottom();
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('paste', handlePaste);
+  return () => {
+    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('paste', handlePaste);
+  };
+}, [
+  hasFocus,
+  nanoMode,
+  text,
+  cursorIndex,
+  nanoText,
+  nanoFilename,
+  currentPath,
+  history,
+  historyIndex,
+  token
+]);
 
   // Mettre a jour le nom de l'utilisateur
   useEffect(() => {
