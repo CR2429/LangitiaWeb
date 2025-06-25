@@ -88,57 +88,59 @@ const Terminal: React.FC = () => {
 
         return;
       }
-
       // === TERMINAL NORMAL ===
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        executeCommand(text);
-        return;
-      }
-
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        const before = text.slice(0, cursorIndex);
-        const after = text.slice(cursorIndex);
-        const newText = before + e.key + after;
-        setText(newText);
-        setCursorIndex(cursorIndex + 1);
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        if (cursorIndex > 0) {
-          const before = text.slice(0, cursorIndex - 1);
+      else {
+        
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          executeCommand(text);
+          return;
+        }
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          const before = text.slice(0, cursorIndex);
           const after = text.slice(cursorIndex);
-          setText(before + after);
-          setCursorIndex(cursorIndex - 1);
-        }
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        setCursorIndex((prev) => Math.max(0, prev - 1));
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        setCursorIndex((prev) => Math.min(text.length, prev + 1));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (history.length > 0) {
-          const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
-          setText(history[newIndex]);
-          setCursorIndex(history[newIndex].length);
-          setHistoryIndex(newIndex);
-        }
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (history.length > 0) {
-          const newIndex = historyIndex === -1 ? -1 : Math.min(history.length - 1, historyIndex + 1);
-          if (newIndex >= 0) {
+          const newText = before + e.key + after;
+          setText(newText);
+          setCursorIndex(cursorIndex + 1);
+        } else if (e.key === 'Backspace') {
+          e.preventDefault();
+          if (cursorIndex > 0) {
+            const before = text.slice(0, cursorIndex - 1);
+            const after = text.slice(cursorIndex);
+            setText(before + after);
+            setCursorIndex(cursorIndex - 1);
+          }
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          setCursorIndex((prev) => Math.max(0, prev - 1));
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          setCursorIndex((prev) => Math.min(text.length, prev + 1));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (history.length > 0) {
+            const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
             setText(history[newIndex]);
             setCursorIndex(history[newIndex].length);
-          } else {
-            setText('');
-            setCursorIndex(0);
+            setHistoryIndex(newIndex);
           }
-          setHistoryIndex(newIndex);
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (history.length > 0) {
+            const newIndex = historyIndex === -1 ? -1 : Math.min(history.length - 1, historyIndex + 1);
+            if (newIndex >= 0) {
+              setText(history[newIndex]);
+              setCursorIndex(history[newIndex].length);
+            } else {
+              setText('');
+              setCursorIndex(0);
+            }
+            setHistoryIndex(newIndex);
+          }
         }
       }
+
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -174,6 +176,7 @@ const Terminal: React.FC = () => {
       </p>
     );
     setOutput(prev => [...prev, commandLine]);
+    setText('');
 
     try {
       const response = await fetch('/api/terminal', {
