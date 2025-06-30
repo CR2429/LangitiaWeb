@@ -45,6 +45,12 @@ function FileWindow() {
     fetchFile();
   }, [id]);
 
+  useEffect(() => {
+  window.addEventListener('focus', () => {
+    parent.postMessage({ type: 'iframeFocus' }, '*');
+  });
+}, []);
+
   if (error) {
     return (
       <div className="baseStyle">

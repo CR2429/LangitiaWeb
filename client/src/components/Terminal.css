@@ -100,6 +100,10 @@ html, body {
   vertical-align: text-bottom;
 }
 
+.cursor.hidden {
+  background: transparent;
+}
+
 @keyframes blink {
   50% {
     opacity: 0;

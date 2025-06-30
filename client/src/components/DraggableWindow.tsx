@@ -84,6 +84,20 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
     };
   }, [onPointerMove, onPointerUp]);
 
+  //mettre le focus en cas de iframe touch
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'iframeFocus') {
+        onFocus(id);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [id, onFocus]);
+
   return (
     <div
       ref={windowRef}
@@ -95,17 +109,17 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
         <span>{title}</span>
         <button onPointerDown={e => e.stopPropagation()} onClick={() => onClose(id)}>X</button>
       </div>
-      <iframe 
+      <iframe
+        onFocusCapture={() => onFocus(id)}
         src={src}
-        onPointerEnter={() => onFocus(id)}
-        title={title} 
-        style={{ 
-          flexGrow : 1, 
-          width : '100%', 
-          border : 'none', 
-          overflow : 'hidden', 
-          display : 'block'
-        }} 
+        title={title}
+        style={{
+          flexGrow: 1,
+          width: '100%',
+          border: 'none',
+          overflow: 'hidden',
+          display: 'block'
+        }}
         sandbox="allow-scripts allow-same-origin"
       />
       <div className="resize-handle" onPointerDown={startResize} style={{ touchAction: 'none', cursor: 'se-resize' }} />
