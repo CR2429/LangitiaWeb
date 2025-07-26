@@ -4,7 +4,7 @@ import MenuBar from './MenuBar';
 import DraggableWindow from './DraggableWindow';
 import { FileItem, fetchFilesByPath } from '../object/FileSystem';
 import { FileEarmarkFont, FileEarmarkImage, FileEarmarkPlay, Folder2 } from "react-bootstrap-icons";
-import ContextMenu from './ContextMenu';
+//import ContextMenu from './ContextMenu';
 
 
 type WindowData = {
@@ -31,27 +31,27 @@ const Home = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [username, setUsername] = useState('');
     const [desktopFiles, setDesktopFiles] = useState<FileItem[]>([]);
-    const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
+    //const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
 
     // Faire apparaitre le menu contextuel
-    useEffect(() => {
-        const handleContextMenu = (event: MouseEvent) => {
-            event.preventDefault();
-            setContextMenu({ visible: true, x: event.clientX, y: event.clientY });
-        };
+    // useEffect(() => {
+    //     const handleContextMenu = (event: MouseEvent) => {
+    //         event.preventDefault();
+    //         setContextMenu({ visible: true, x: event.clientX, y: event.clientY });
+    //     };
 
-        const handleClick = () => {
-            setContextMenu((prev) => ({ ...prev, visible: false }));
-        };
+    //     const handleClick = () => {
+    //         setContextMenu((prev) => ({ ...prev, visible: false }));
+    //     };
 
-        document.addEventListener('contextmenu', handleContextMenu);
-        document.addEventListener('click', handleClick);
+    //     document.addEventListener('contextmenu', handleContextMenu);
+    //     document.addEventListener('click', handleClick);
 
-        return () => {
-            document.removeEventListener('contextmenu', handleContextMenu);
-            document.removeEventListener('click', handleClick);
-        };
-    }, []);
+    //     return () => {
+    //         document.removeEventListener('contextmenu', handleContextMenu);
+    //         document.removeEventListener('click', handleClick);
+    //     };
+    // }, []);
 
     // Vérifier login local + backend
     useEffect(() => {
@@ -358,7 +358,7 @@ const Home = () => {
                         onOpenLogin={handleOpenLogin}
                     />
 
-                    {/* Menu contextuel */}
+                    {/* Menu contextuel
                     <ContextMenu
                         x={contextMenu.x}
                         y={contextMenu.y}
@@ -366,7 +366,7 @@ const Home = () => {
                         isLoggedIn={isLoggedIn}
                         onClose={() => setContextMenu((prev) => ({ ...prev, visible: false }))}
                         onOpenTerminal={() => openWindow("Terminal", "/terminal")}
-                    />
+                    /> */}
                 </div>
             )}
         </>
