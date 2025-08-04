@@ -1,12 +1,13 @@
 import "./MenuBar.css";
-import { Terminal, PersonSquare, ShieldShaded } from "react-bootstrap-icons";
+import { Terminal, PersonSquare, ShieldShaded, FolderSymlink } from "react-bootstrap-icons";
 
 interface MenuBarProps {
   onOpenTerminal: () => void;
   onOpenLogin: () => void;
+  onOpenEditText: () => void;
 }
 
-const MenuBar = ({ onOpenTerminal, onOpenLogin }: MenuBarProps) => {
+const MenuBar = ({ onOpenTerminal, onOpenLogin, onOpenEditText }: MenuBarProps) => {
   return (
     <div className="menu-bar">
       <button
@@ -34,6 +35,12 @@ const MenuBar = ({ onOpenTerminal, onOpenLogin }: MenuBarProps) => {
         <span className="icon-stack">
           <ShieldShaded className="icon-back" />
           <ShieldShaded className="icon-front" />
+        </span>
+      </button>
+      <button onClick={onOpenEditText}>
+        <span className="icon-stack">
+          <FolderSymlink className="icon-back" />
+          <FolderSymlink className="icon-front" />
         </span>
       </button>
     </div>

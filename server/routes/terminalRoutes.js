@@ -162,7 +162,35 @@ router.post('/terminal', async (req, res) => {
         // CREER OU MODIFIER UN FICHIER TEXTUEL
         //
         case 'nano': {
-            //login
+            return res.json({ output: '🛑 La commande "nano" est désactivée. Utilisez plutôt "touch".' });
+            // //login
+            // let userId;
+            // try {
+            //     userId = getUserIdFromToken(req);
+            // } catch (err) {
+            //     return res.status(401).json({ output: `Erreur : ${err.message}` });
+            // }
+
+            // const filename = args[0];
+            // if (!filename || !/\.(txt|md|log)$/.test(filename)) {
+            //     return res.json({ output: 'Erreur : fichier invalide. Utilisez .txt, .md ou .log' });
+            // }
+
+            // // Détection du mode appendOnly
+            // const isAppendOnly = filename.endsWith('.log');
+
+            // // Envoyer une requête pour afficher l'interface de modification
+            // return res.json({
+            //     action: 'openEditor',
+            //     filename: filename,
+            //     appendOnly: isAppendOnly // true uniquement pour .log
+            // });
+        }
+        //
+        // OUVRE UNE FENETRE POUR EDIT OU CREER UN FICHIER
+        //
+        case 'touch': {
+             // 🔒 Authentification
             let userId;
             try {
                 userId = getUserIdFromToken(req);
@@ -170,19 +198,24 @@ router.post('/terminal', async (req, res) => {
                 return res.status(401).json({ output: `Erreur : ${err.message}` });
             }
 
-            const filename = args[0];
-            if (!filename || !/\.(txt|md|log)$/.test(filename)) {
-                return res.json({ output: 'Erreur : fichier invalide. Utilisez .txt, .md ou .log' });
+            // 📦 Liste des extensions autorisées
+            const allowedExtensions = ['txt', 'md'];
+
+            // 🧪 Validation du nom
+            const filename = args.join(' ').trim();
+            const extensionMatch = filename.match(/\.(\w+)$/);
+            const extension = extensionMatch ? extensionMatch[1].toLowerCase() : null;
+
+            if (!filename || !extension || !allowedExtensions.includes(extension)) {
+                return res.json({
+                    output: `Erreur : extension "${extension || '?'}" non autorisée.`
+                });
             }
 
-            // Détection du mode appendOnly
-            const isAppendOnly = filename.endsWith('.log');
-
-            // Envoyer une requête pour afficher l'interface de modification
             return res.json({
-                action: 'openEditor',
-                filename: filename,
-                appendOnly: isAppendOnly // true uniquement pour .log
+                output: 'Ouverture du fichier...',
+                action: 'openWindow',
+                src: `/file-editor?path=${path}/${filename}`
             });
         }
         //
@@ -204,7 +237,6 @@ router.post('/terminal', async (req, res) => {
                 return res.status(500).json({ output: '❌ Erreur lors de la mise à jour de wake_on_lan.' });
             }
         }
-
         //
         // AFFICHER LES INFOS DE LA TABLE RASPBERRY
         //
@@ -238,6 +270,8 @@ router.post('/terminal', async (req, res) => {
 });
  
 router.get('/terminal/nano', async (req, res) => {
+    return res.status(410).json({ error: 'Route désactivée.' });
+
     const { filename, path } = req.query;
 
     //verifier l'extension du fichier
@@ -270,6 +304,8 @@ router.get('/terminal/nano', async (req, res) => {
 });
 
 router.post('/terminal/nano', async (req, res) => {
+    return res.status(410).json({ error: 'Route désactivée.' })
+
     const { filename, path, content } = req.body;
 
     // verifier le nom du fichier

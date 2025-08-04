@@ -174,19 +174,37 @@ const Home = () => {
         return () => clearInterval(interval);
     }, [step, desktopFiles]);
 
+    //Recevoir la commande touch du terminal
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const { type, payload } = event.data;
+
+            if (type === 'openWindow') {
+                openWindow(payload.title, payload.src)
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
     //Ouvrire une nouvelle fenetre
     const openWindow = (title: string, src: string) => {
-        const newWindow: WindowData = {
-            id: nextId,
-            title,
-            src,
-            x: window.innerWidth / 2 - 300,
-            y: window.innerHeight / 2 - 200,
-            z: nextZ,
-        };
-        setWindows(prev => [...prev, newWindow]);
-        setNextId(prev => prev + 1);
-        setNextZ(prev => prev + 1);
+        setWindows(prev => {
+            const maxId = prev.length > 0 ? Math.max(...prev.map(w => w.id)) : 0;
+            const maxZ = prev.length > 0 ? Math.max(...prev.map(w => w.z)) : 0;
+
+            const newWindow: WindowData = {
+                id: maxId + 1,
+                title,
+                src,
+                x: window.innerWidth / 2 - 300,
+                y: window.innerHeight / 2 - 200,
+                z: maxZ + 1,
+            };
+
+            return [...prev, newWindow];
+        });
     };
 
     //fermer une fenetre
@@ -356,6 +374,7 @@ const Home = () => {
                     <MenuBar
                         onOpenTerminal={() => openWindow("Terminal", "/terminal")}
                         onOpenLogin={handleOpenLogin}
+                        onOpenEditText={() => openWindow("Editeur de fichier", "/file-editor")}
                     />
 
                     {/* Menu contextuel

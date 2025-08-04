@@ -233,6 +233,7 @@ const Terminal: React.FC = () => {
 
       if (data.newPath) setCurrentPath(data.newPath);
 
+      // action d'ouvrir le mode nano
       if (data.action === 'openEditor') {
         if (data.appendOnly) {
           setNanoText('');
@@ -257,6 +258,18 @@ const Terminal: React.FC = () => {
         setHistoryIndex(-1);
         setCursorIndex(0);
         return;
+      }
+
+      //action d'ouvrir la fenetre du mode touch
+      if (data.action === 'openWindow') {
+        const payload = {
+          type: 'openWindow',
+          payload: {
+            title: 'Éditeur de fichier',
+            src: data.src,
+          }
+        };
+        window.parent.postMessage(payload, '*');
       }
 
       if (data.output) {
