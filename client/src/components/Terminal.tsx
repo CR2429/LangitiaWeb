@@ -1,5 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import './Terminal.css';
+
+const useDraggableId = () => {
+  return useMemo(() => {
+    const p = new URLSearchParams(window.location.search);
+    const v = Number(p.get('draggableId'));
+    return Number.isFinite(v) ? v : undefined;
+  }, []);
+};
 
 const Terminal: React.FC = () => {
   const [username, setUsername] = useState(() => localStorage.getItem('authUser') || 'unlog');
@@ -19,6 +27,7 @@ const Terminal: React.FC = () => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const token = localStorage.getItem('authToken') || '';
+  const draggableId = useDraggableId();
 
   const prompt = (
     <>
@@ -105,7 +114,6 @@ const Terminal: React.FC = () => {
         executeCommand(text);
         return;
       }
-
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         const before = text.slice(0, cursorIndex);
@@ -306,10 +314,28 @@ const Terminal: React.FC = () => {
   };
 
   useEffect(() => {
-    window.addEventListener('focus', () => {
-      parent.postMessage({ type: 'iframeFocus' }, '*');
-    });
-  }, []);
+    if (draggableId === undefined) return;
+
+    const notify = () => {
+      parent.postMessage({ type: 'iframeFocus', payload: { id: draggableId } }, '*');
+    };
+
+    // focus natif de l’iframe
+    window.addEventListener('focus', notify);
+
+    // fallback utiles (certaines actions ne changent pas le focus)
+    window.addEventListener('pointerdown', notify, true);
+    window.addEventListener('keydown', notify, true);
+
+    // Optionnel : ping au mount pour la passer devant dès l’ouverture
+    // notify();
+
+    return () => {
+      window.removeEventListener('focus', notify);
+      window.removeEventListener('pointerdown', notify, true);
+      window.removeEventListener('keydown', notify, true);
+    };
+  }, [draggableId]);
 
   return (
     <div

@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { marked } from 'marked';
 import './FileWindow.css';
 
@@ -15,11 +15,21 @@ interface FileData {
   path: string;
 }
 
+const useDraggableId = () => {
+  return useMemo(() => {
+    const p = new URLSearchParams(window.location.search);
+    const v = Number(p.get('draggableId'));
+    return Number.isFinite(v) ? v : undefined;
+  }, []);
+};
+
 function FileWindow() {
   const { id } = useParams();
   const [file, setFile] = useState<FileData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const draggableId = useDraggableId();
 
+  // recuperer le fichier
   useEffect(() => {
     const fetchFile = async () => {
       try {
@@ -45,11 +55,30 @@ function FileWindow() {
     fetchFile();
   }, [id]);
 
+  //faire le focus
   useEffect(() => {
-  window.addEventListener('focus', () => {
-    parent.postMessage({ type: 'iframeFocus' }, '*');
-  });
-}, []);
+    if (draggableId === undefined) return;
+
+    const notify = () => {
+      parent.postMessage({ type: 'iframeFocus', payload: { id: draggableId } }, '*');
+    };
+
+    // focus natif de l’iframe
+    window.addEventListener('focus', notify);
+
+    // fallback utiles (certaines actions ne changent pas le focus)
+    window.addEventListener('pointerdown', notify, true);
+    window.addEventListener('keydown', notify, true);
+
+    // Optionnel : ping au mount pour la passer devant dès l’ouverture
+    // notify();
+
+    return () => {
+      window.removeEventListener('focus', notify);
+      window.removeEventListener('pointerdown', notify, true);
+      window.removeEventListener('keydown', notify, true);
+    };
+  }, [draggableId]);
 
   if (error) {
     return (

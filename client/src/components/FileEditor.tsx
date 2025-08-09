@@ -1,9 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+
+const useDraggableId = () => {
+  return useMemo(() => {
+    const p = new URLSearchParams(window.location.search);
+    const v = Number(p.get('draggableId'));
+    return Number.isFinite(v) ? v : undefined;
+  }, []);
+};
 
 export default function TextEditorPage() {
   const [name, setName] = useState('');
   const [extension, setExtension] = useState<'txt' | 'md'>('txt');
   const [content, setContent] = useState('');
+  const draggableId = useDraggableId();
 
   // Charge un fichier si on a des paramètres
   useEffect(() => {
@@ -19,6 +28,31 @@ export default function TextEditorPage() {
         });
     }
   }, []);
+
+  //faire le focus
+  useEffect(() => {
+    if (draggableId === undefined) return;
+
+    const notify = () => {
+      parent.postMessage({ type: 'iframeFocus', payload: { id: draggableId } }, '*');
+    };
+
+    // focus natif de l’iframe
+    window.addEventListener('focus', notify);
+
+    // fallback utiles (certaines actions ne changent pas le focus)
+    window.addEventListener('pointerdown', notify, true);
+    window.addEventListener('keydown', notify, true);
+
+    // Optionnel : ping au mount pour la passer devant dès l’ouverture
+    // notify();
+
+    return () => {
+      window.removeEventListener('focus', notify);
+      window.removeEventListener('pointerdown', notify, true);
+      window.removeEventListener('keydown', notify, true);
+    };
+  }, [draggableId]);
 
   const handleSave = async () => {
     if (!name.trim()) {

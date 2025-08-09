@@ -174,13 +174,18 @@ const Home = () => {
         return () => clearInterval(interval);
     }, [step, desktopFiles]);
 
-    //Recevoir la commande touch du terminal
+    //Recevoir un message du terminal pour interragir avec le home
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             const { type, payload } = event.data;
 
             if (type === 'openWindow') {
                 openWindow(payload.title, payload.src)
+            }
+
+            if (type === 'iframeFocus' && payload && typeof payload.id === 'number')
+            {
+                bringToFront(payload.id);
             }
         };
 
@@ -194,10 +199,13 @@ const Home = () => {
             const maxId = prev.length > 0 ? Math.max(...prev.map(w => w.id)) : 0;
             const maxZ = prev.length > 0 ? Math.max(...prev.map(w => w.z)) : 0;
 
+            const newId = maxId + 1;
+            const withId = src + (src.includes('?') ? '&' : '?') + `draggableId=${newId}`;
+
             const newWindow: WindowData = {
-                id: maxId + 1,
+                id: newId,
                 title,
-                src,
+                src: withId,
                 x: window.innerWidth / 2 - 300,
                 y: window.innerHeight / 2 - 200,
                 z: maxZ + 1,
@@ -214,6 +222,8 @@ const Home = () => {
 
     //Mettre une page au premier plan
     const bringToFront = (id: number) => {
+        console.log("mettre en avant la fenetre avec l'id ", id);
+
         setWindows(prev => {
             const maxZ = Math.max(...prev.map(w => w.z));
             setNextZ(prev => prev + 1);

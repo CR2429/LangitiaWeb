@@ -88,7 +88,7 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'iframeFocus') {
-        onFocus(id);
+        onFocus(event.data.id);
       }
     };
 
