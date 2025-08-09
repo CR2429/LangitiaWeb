@@ -30,7 +30,7 @@ app.use(helmet());
 resetUsersOnStartup();
 
 // redirection des routes
-app.use(logIpMiddleware);
+app.use('/api', logIpMiddleware);
 app.use('/api', authRoutes);
 app.use('/api', fileRoutes);
 app.use('/api', terminalRoutes);
