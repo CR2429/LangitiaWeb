@@ -4,7 +4,7 @@ function SecurityProtocols() {
   const [htmlContent, setHtmlContent] = useState<string>('');
 
   // 🔧 Change ici la version du protocole
-  const latestVersion = 'v1.1.html';
+  const latestVersion = 'v1.2.html';
 
   useEffect(() => {
     const fetchProtocol = async () => {
