@@ -133,9 +133,14 @@ const Home = () => {
                 const files = await fetchFilesByPath('/home');
 
                 // Tri alphabétique
-                const sortedFiles = files.sort((a, b) =>
-                    a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
-                );
+                const sortedFiles = files.sort((a, b) => {
+                    // 1. Les dossiers passent avant les fichiers
+                    if (a.type === 'folder' && b.type !== 'folder') return -1;
+                    if (a.type !== 'folder' && b.type === 'folder') return 1;
+
+                    // 2. Ensuite tri alphabétique
+                    return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+                });
 
                 setDesktopFiles(sortedFiles);
             };

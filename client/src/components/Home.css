@@ -80,17 +80,23 @@
   to   { opacity: 1; }
 }
 
+:root{
+  --dock-h: 64px; /* hauteur de ta MenuBar */
+}
+
 .desktop-grid {
+  box-sizing: border-box;
   padding: 20px;
+  padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px));
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   display: grid;
   grid-auto-flow: column;
   grid-template-rows: repeat(auto-fill, 100px);
   grid-auto-rows: 100px;
-  width: 100%;
-  height: 100%;
+  gap: 16px 24px;
+  align-content: start;
+  justify-content: start;
   pointer-events: none; 
 }
 
