@@ -10,6 +10,7 @@ const useDraggableId = () => {
 };
 
 const Terminal: React.FC = () => {
+  // === États principaux ===
   const [username, setUsername] = useState(() => localStorage.getItem('authUser') || 'unlog');
   const [systemName] = useState('CartageOS');
   const [currentPath, setCurrentPath] = useState('/home');
@@ -20,39 +21,42 @@ const Terminal: React.FC = () => {
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
+  // === Mode Nano ===
   const [nanoMode, setNanoMode] = useState(false);
   const [nanoText, setNanoText] = useState('');
   const [nanoFilename, setNanoFilename] = useState('');
 
+  // === Références ===
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const token = localStorage.getItem('authToken') || '';
   const draggableId = useDraggableId();
 
-  const prompt = (
-    <>
-      <span className="prompt-user-host">{username}@CartageOS:</span>
-      <span className="prompt-path">~{currentPath} $ </span>
-    </>
-  );
-
-  // Focus sur clic
+  // === Focus sur clic ===
   useEffect(() => {
     const handleClick = () => terminalRef.current?.focus();
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  // Gestion clavier
+  // === Scroll vers le bas ===
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+  };
+
+  // === Gestion clavier ===
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!hasFocus) return;
 
       scrollToBottom();
 
-      // === MODE NANO ===
+      // === MODE NANO SIMPLIFIÉ ===
       if (nanoMode) {
-        if (e.ctrlKey && e.key === 's') {
+        // CTRL + S → Sauvegarder
+        if (e.ctrlKey && e.key.toLowerCase() === 's') {
           e.preventDefault();
           fetch('/api/terminal/nano', {
             method: 'POST',
@@ -65,18 +69,21 @@ const Terminal: React.FC = () => {
               path: currentPath,
               content: nanoText,
             }),
-          }).then(() => {
-            setNanoMode(false);
-            setNanoText('');
-            setNanoFilename('');
-          }).catch((err) => {
-            console.error('Erreur lors de l’enregistrement :', err);
-            alert("Erreur lors de l'enregistrement du fichier.");
-          });
+          })
+            .then(() => {
+              setNanoMode(false);
+              setNanoText('');
+              setNanoFilename('');
+            })
+            .catch((err) => {
+              console.error('Erreur lors de l’enregistrement :', err);
+              alert("Erreur lors de l'enregistrement du fichier.");
+            });
           return;
         }
 
-        if (e.ctrlKey && e.key === 'q') {
+        // CTRL + Q → Quitter
+        if (e.ctrlKey && e.key.toLowerCase() === 'q') {
           e.preventDefault();
           setNanoMode(false);
           setNanoText('');
@@ -84,22 +91,7 @@ const Terminal: React.FC = () => {
           return;
         }
 
-        if (e.ctrlKey && e.key.toLowerCase() === 'v') {
-          // Laisse le paste handler gérer ça
-          return;
-        }
-
-        if (e.key === 'Backspace') {
-          e.preventDefault();
-          setNanoText(prev => prev.slice(0, -1));
-        } else if (e.key.length === 1) {
-          e.preventDefault();
-          setNanoText(prev => prev + e.key);
-        } else if (e.key === 'Enter') {
-          e.preventDefault();
-          setNanoText(prev => prev + '\n');
-        }
-
+        // Le reste est géré directement par contentEditable → aucune action ici
         return;
       }
 
@@ -114,6 +106,7 @@ const Terminal: React.FC = () => {
         executeCommand(text);
         return;
       }
+
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         const before = text.slice(0, cursorIndex);
@@ -162,11 +155,10 @@ const Terminal: React.FC = () => {
     const handlePaste = (e: ClipboardEvent) => {
       const pasted = e.clipboardData?.getData('text') || '';
       if (!pasted) return;
-
       e.preventDefault();
 
       if (nanoMode) {
-        setNanoText(prev => prev + pasted);
+        setNanoText((prev) => prev + pasted);
       } else {
         const before = text.slice(0, cursorIndex);
         const after = text.slice(cursorIndex);
@@ -183,48 +175,21 @@ const Terminal: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('paste', handlePaste);
     };
-  }, [
-    hasFocus,
-    nanoMode,
-    text,
-    cursorIndex,
-    nanoText,
-    nanoFilename,
-    currentPath,
-    history,
-    historyIndex,
-    token
-  ]);
+  }, [hasFocus, nanoMode, text, cursorIndex, nanoText, nanoFilename, currentPath, history, historyIndex, token]);
 
-  // Mettre a jour le nom de l'utilisateur
-  useEffect(() => {
-    const syncUsername = () => {
-      const storedUser = localStorage.getItem('authUser') || 'unlog';
-      setUsername(storedUser);
-    };
-
-    window.addEventListener('storage', syncUsername);
-    return () => window.removeEventListener('storage', syncUsername);
-  }, []);
-
-  // Scroll down
-  const scrollToBottom = () => {
-    requestAnimationFrame(() => {
-      terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    });
-  };
-
-  // Executer les commandes
+  // === Exécution des commandes ===
   const executeCommand = async (command: string) => {
     // Ajoute la ligne avec le prompt et la commande tapée
     const commandLine = (
-      <p className="terminal-line">
-        <span className="prompt-user-host">{username}@{systemName}:</span>
-        <span className="prompt-path">~{currentPath} $ </span>
-        <span>{command}</span>
-      </p>
+      <pre className="terminal-line">
+        <samp>
+          <span className="prompt-user-host">{username}@{systemName}</span>:
+          <span className="prompt-path">~{currentPath}$ </span>
+          <kbd>{command}</kbd>
+        </samp>
+      </pre>
     );
-    setOutput(prev => [...prev, commandLine]);
+    setOutput((prev) => [...prev, commandLine]);
     setText('');
 
     try {
@@ -241,101 +206,67 @@ const Terminal: React.FC = () => {
 
       if (data.newPath) setCurrentPath(data.newPath);
 
-      // action d'ouvrir le mode nano
+      // === Action : ouvrir le mode nano ===
       if (data.action === 'openEditor') {
-        if (data.appendOnly) {
-          setNanoText('');
-          setNanoFilename(data.filename);
-          setNanoMode(true);
-          setText('');
-          setHistory(prev => [...prev.filter(c => c !== command), command]);
-          setHistoryIndex(-1);
-          setCursorIndex(0);
-          return;
-        }
-
         const fileRes = await fetch(`/api/terminal/nano?filename=${data.filename}&path=${currentPath}`);
         const fileData = await fileRes.json();
-
-        const initial = fileData.appendOnly ? fileData.content + '\n' : fileData.content;
-        setNanoText(initial);
+        setNanoText(fileData.content || '');
         setNanoFilename(data.filename);
         setNanoMode(true);
         setText('');
-        setHistory(prev => [...prev.filter(c => c !== command), command]);
-        setHistoryIndex(-1);
-        setCursorIndex(0);
         return;
       }
 
-      //action d'ouvrir la fenetre du mode touch
+      // === Action : ouvrir une fenêtre ===
       if (data.action === 'openWindow') {
         const payload = {
           type: 'openWindow',
           payload: {
             title: 'Éditeur de fichier',
             src: data.src,
-          }
+          },
         };
         window.parent.postMessage(payload, '*');
       }
 
+      // === Affichage du résultat ===
       if (data.output) {
         const lines = String(data.output).split('\n');
         const outputLines = lines.map((line, index) => (
-          <p key={`out-${index}`} className="terminal-line">{line}</p>
+          <pre key={`out-${index}`} className="terminal-line"><samp>{line}</samp></pre>
         ));
-        setOutput(prev => [...prev, ...outputLines]);
+        setOutput((prev) => [...prev, ...outputLines]);
       }
-
     } catch (err) {
-      setOutput(prev => [...prev, <p className="terminal-line">Erreur : {(err as Error).message}</p>]);
+      setOutput((prev) => [
+        ...prev,
+        <pre className="terminal-line"><samp>Erreur : {(err as Error).message}</samp></pre>,
+      ]);
     }
 
-    setHistory(prev => [...prev.filter(c => c !== command), command]);
+    setHistory((prev) => [...prev.filter((c) => c !== command), command]);
     setHistoryIndex(-1);
     setText('');
     setCursorIndex(0);
     scrollToBottom();
   };
 
-  // Render text with cursor
+  // === Rendu du texte courant avec curseur ===
   const renderCurrentLine = () => {
     const before = text.slice(0, cursorIndex);
     const after = text.slice(cursorIndex);
     return (
-      <>
-        {prompt}
-        <span>{before}</span>
-        <span className={`cursor ${!hasFocus ? 'hidden' : ''}`}></span>
-        <span>{after}</span>
-      </>
+      <pre className="terminal-line">
+        <samp>
+          <span className="prompt-user-host">{username}@{systemName}</span>:
+          <span className="prompt-path">~{currentPath}$ </span>
+          <kbd>{before}</kbd>
+          <span className={`cursor ${!hasFocus ? 'hidden' : ''}`} />
+          <kbd>{after}</kbd>
+        </samp>
+      </pre>
     );
   };
-
-  useEffect(() => {
-    if (draggableId === undefined) return;
-
-    const notify = () => {
-      parent.postMessage({ type: 'iframeFocus', payload: { id: draggableId } }, '*');
-    };
-
-    // focus natif de l’iframe
-    window.addEventListener('focus', notify);
-
-    // fallback utiles (certaines actions ne changent pas le focus)
-    window.addEventListener('pointerdown', notify, true);
-    window.addEventListener('keydown', notify, true);
-
-    // Optionnel : ping au mount pour la passer devant dès l’ouverture
-    // notify();
-
-    return () => {
-      window.removeEventListener('focus', notify);
-      window.removeEventListener('pointerdown', notify, true);
-      window.removeEventListener('keydown', notify, true);
-    };
-  }, [draggableId]);
 
   return (
     <div
@@ -345,34 +276,27 @@ const Terminal: React.FC = () => {
       onFocus={() => setHasFocus(true)}
       onBlur={() => setHasFocus(false)}
     >
-      {!nanoMode && output.map((line, index) => (
-        <div key={index}>{line}</div>
-      ))}
+      {!nanoMode && output.map((line, index) => <div key={index}>{line}</div>)}
       {!nanoMode && renderCurrentLine()}
+
+      {/* === MODE NANO SIMPLIFIÉ === */}
       {nanoMode && (
         <>
-          {(() => {
-            const lines = nanoText.split('\n');
-            const lastLine = lines.pop() || '';
-            return (
-              <>
-                {lines.map((line, i) => (
-                  <p key={`nano-line-${i}`} className="nano-line">{line}</p>
-                ))}
-                <p className="nano-line">
-                  {lastLine}
-                  <span className={`cursor ${!hasFocus ? 'hidden' : ''}`} />
-                </p>
-              </>
-            );
-          })()}
+          <pre
+            className="nano-line"
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => setNanoText(e.currentTarget.textContent || '')}
+          >
+            {nanoText}
+          </pre>
 
           <div className="nano-instructions-fixed">
             CTRL+S: Sauvegarder | CTRL+Q: Quitter
           </div>
-
         </>
       )}
+
       <div ref={terminalEndRef} />
     </div>
   );

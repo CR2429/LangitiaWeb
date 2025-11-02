@@ -33,6 +33,7 @@ html, body {
 
 .terminal-line {
   margin: 0px;
+  white-space: pre-wrap;
 }
 
 .terminal-output {
