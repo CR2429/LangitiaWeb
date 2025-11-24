@@ -11,6 +11,7 @@ const authRoutes = require('./routes/authRoutes');
 const fileRoutes = require('./routes/fileRoutes');
 const terminalRoutes = require('./routes/terminalRoutes');
 const raspberryRoutes = require('./routes/raspberryRoutes');
+const syncRoutes = require('./routes/syncRoutes');
 
 const app = express();
 const logIpMiddleware = require('./middleware/logIp');
@@ -35,6 +36,7 @@ app.use('/api', authRoutes);
 app.use('/api', fileRoutes);
 app.use('/api', terminalRoutes);
 app.use('/api', raspberryRoutes);
+app.use('/api/sync', syncRoutes);
 
 // Sert les fichiers React avec gestion du cache intelligente
 app.use(express.static(path.join(__dirname, '../client/dist'), {

@@ -1,145 +1,117 @@
-import { useParams } from 'react-router-dom';
-import { useEffect, useState, useMemo } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import './DraggableWindow.css';
 import { marked } from 'marked';
-import './FileWindow.css';
+import Terminal from './Terminal';
 
-
-type FileType = 'file-text' | 'file-md' | 'file-image' | 'file-video' | 'file-audio' | 'folder';
-
-interface FileData {
+type Props = {
   id: string;
-  name: string;
-  type: FileType;
-  content: string | null;
-  url: string | null;
-  path: string;
-}
-
-const useDraggableId = () => {
-  return useMemo(() => {
-    const p = new URLSearchParams(window.location.search);
-    const v = Number(p.get('draggableId'));
-    return Number.isFinite(v) ? v : undefined;
-  }, []);
+  title: string;
+  type: string;
+  content: string;
+  x: number;
+  y: number;
+  z: number;
+  hidden: boolean;
+  onClose: (id: string) => void;
+  onFocus: (id: string) => void;
 };
 
-function FileWindow() {
-  const { id } = useParams();
-  const [file, setFile] = useState<FileData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const draggableId = useDraggableId();
+const DraggableWindow = ({ id, title, type, content, x, y, z, hidden, onClose, onFocus }: Props) => {
+  const windowRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x, y });
+  const [size, setSize] = useState({ width: 600, height: 400 });
 
-  // recuperer le fichier
-  useEffect(() => {
-    const fetchFile = async () => {
-      try {
-        const res = await fetch(`/api/file?id=${id}`);
+  const dragState = useRef<{ startMouseX: number; startMouseY: number; startX: number; startY: number; } | null>(null);
+  const resizeState = useRef<{ startMouseX: number; startMouseY: number; startWidth: number; startHeight: number; } | null>(null);
 
-        if (!res.ok) throw new Error(`Erreur ${res.status} : fichier introuvable.`);
+  const onPointerMove = useCallback((e: PointerEvent) => {
+    if (dragState.current) {
+      const dx = e.clientX - dragState.current.startMouseX;
+      const dy = e.clientY - dragState.current.startMouseY;
+      setPosition({ x: dragState.current.startX + dx, y: dragState.current.startY + dy });
+    } else if (resizeState.current) {
+      const dx = e.clientX - resizeState.current.startMouseX;
+      const dy = e.clientY - resizeState.current.startMouseY;
+      setSize({
+        width: Math.max(resizeState.current.startWidth + dx, 300),
+        height: Math.max(resizeState.current.startHeight + dy, 200),
+      });
+    }
+  }, []);
 
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const data = await res.json();
-          setFile(data);
-        } else {
-          const html = await res.text();
-          console.error('Réponse inattendue HTML :', html.slice(0, 200));
-          throw new Error("Réponse inattendue du serveur : HTML au lieu de JSON.");
-        }
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Erreur inconnue.");
-      }
+  const onPointerUp = useCallback(() => {
+    dragState.current = null;
+    resizeState.current = null;
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+  }, [onPointerMove]);
+
+  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onFocus(id);
+    dragState.current = {
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startX: position.x,
+      startY: position.y,
     };
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
 
-    fetchFile();
-  }, [id]);
-
-  //faire le focus
-  useEffect(() => {
-    if (draggableId === undefined) return;
-
-    const notify = () => {
-      parent.postMessage({ type: 'iframeFocus', payload: { id: draggableId } }, '*');
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizeState.current = {
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startWidth: size.width,
+      startHeight: size.height,
     };
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
 
-    // focus natif de l’iframe
-    window.addEventListener('focus', notify);
-
-    // fallback utiles (certaines actions ne changent pas le focus)
-    window.addEventListener('pointerdown', notify, true);
-    window.addEventListener('keydown', notify, true);
-
-    // Optionnel : ping au mount pour la passer devant dès l’ouverture
-    // notify();
-
+  useEffect(() => {
     return () => {
-      window.removeEventListener('focus', notify);
-      window.removeEventListener('pointerdown', notify, true);
-      window.removeEventListener('keydown', notify, true);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [draggableId]);
+  }, [onPointerMove, onPointerUp]);
 
-  if (error) {
-    return (
-      <div className="baseStyle">
-        <p style={{ color: 'red' }}>Erreur : {error}</p>
-      </div>
-    );
-  }
-
-  if (!file) {
-    return (
-      <div className="baseStyle">
-        <p style={{ color: '#ccc' }}>Chargement...</p>
-      </div>
-    );
-  }
+  if (hidden) return null;
 
   const renderContent = () => {
-    switch (file.type) {
-      case 'file-text':
-        return <pre className="file-text-content">{file.content}</pre>;
-
-      case 'file-md':
-        return (
-          <div
-            className="file-text-content"
-            dangerouslySetInnerHTML={{ __html: marked(file.content || '') }}
-          />
-        );
-
-      case 'file-image':
-        return <img src={file.url || ''} alt={file.name} className="file-image" />;
-
-      case 'file-video':
-        return (
-          <video controls className="file-media">
-            <source src={file.url || ''} />
-          </video>
-        );
-
-      case 'file-audio':
-        return (
-          <audio controls className="file-media">
-            <source src={file.url || ''} />
-          </audio>
-        );
-
-      case 'folder':
-        return <p style={{ padding: '1rem' }}>📁 Ceci est un dossier.</p>;
-
-      default:
-        return <p style={{ padding: '1rem' }}>❓ Type de fichier inconnu.</p>;
+    switch (type) {
+      case 'terminal': return <Terminal />;
+      case 'text/plain':
+      case 'file-text': return <pre className="file-text-content">{content}</pre>;
+      case 'markdown':
+      case 'file-md': return <div className="file-text-content" dangerouslySetInnerHTML={{ __html: marked(content || '') }} />;
+      case 'image/png':
+      case 'file-image': return <img src={content} alt={title} className="file-image" />;
+      case 'video/mp4':
+      case 'file-video': return <video controls className="file-media"><source src={content} /></video>;
+      default: return <p style={{ padding: '1rem' }}>Fichier sans rendu spécifique.</p>;
     }
   };
 
   return (
-    <div className="file-window">
-      <div className="file-window-content file-scroll">{renderContent()}</div>
+    <div
+      ref={windowRef}
+      className="window"
+      style={{ top: position.y, left: position.x, width: size.width, height: size.height, zIndex: z }}
+      onPointerDown={() => onFocus(id)}
+    >
+      <div className="window-header" onPointerDown={startDrag}>
+        <span>{title}</span>
+        <button onClick={() => onClose(id)}>X</button>
+      </div>
+      <div className="window-body">{renderContent()}</div>
+      <div className="resize-handle" onPointerDown={startResize} />
     </div>
   );
+};
 
-}
-
-export default FileWindow;
+export default DraggableWindow;

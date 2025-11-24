@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import './Terminal.css';
 
+// =============================================================
+// 🔧 UTIL - ID DRAGGABLE (optionnel pour compatibilité future)
+// =============================================================
 const useDraggableId = () => {
   return useMemo(() => {
     const p = new URLSearchParams(window.location.search);
@@ -9,15 +12,42 @@ const useDraggableId = () => {
   }, []);
 };
 
+// =============================================================
+// 💾 GESTION DU SYSTÈME DE FICHIERS LOCAL
+// =============================================================
+const getLocalFS = (): any => {
+  const raw = localStorage.getItem('localFS');
+  if (!raw) {
+    const base = { root: { type: 'dir', children: { home: { type: 'dir', children: {} } } } };
+    localStorage.setItem('localFS', JSON.stringify(base));
+    return base;
+  }
+  return JSON.parse(raw);
+};
+
+const saveLocalFS = (fs: any) => localStorage.setItem('localFS', JSON.stringify(fs));
+
+const resolvePath = (fs: any, path: string): any => {
+  const parts = path.replace(/^\/+/, '').split('/').filter(Boolean);
+  let node = fs.root;
+  for (const part of parts) {
+    if (!node.children[part]) return null;
+    node = node.children[part];
+  }
+  return node;
+};
+
+// =============================================================
+// 🧠 TERMINAL PRINCIPAL
+// =============================================================
 const Terminal: React.FC = () => {
-  // === États principaux ===
-  const [username, setUsername] = useState(() => localStorage.getItem('authUser') || 'unlog');
+  const [username] = useState(() => localStorage.getItem('authUser') || 'unlog');
   const [systemName] = useState('CartageOS');
   const [currentPath, setCurrentPath] = useState('/home');
   const [text, setText] = useState('');
   const [cursorIndex, setCursorIndex] = useState(0);
-  const [hasFocus, setHasFocus] = useState(false);
   const [output, setOutput] = useState<React.ReactNode[]>([]);
+  const [hasFocus, setHasFocus] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
@@ -26,11 +56,17 @@ const Terminal: React.FC = () => {
   const [nanoText, setNanoText] = useState('');
   const [nanoFilename, setNanoFilename] = useState('');
 
-  // === Références ===
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const token = localStorage.getItem('authToken') || '';
   const draggableId = useDraggableId();
+
+  // === Scroll automatique ===
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+  };
 
   // === Focus sur clic ===
   useEffect(() => {
@@ -39,23 +75,16 @@ const Terminal: React.FC = () => {
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  // === Scroll vers le bas ===
-  const scrollToBottom = () => {
-    requestAnimationFrame(() => {
-      terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    });
-  };
-
-  // === Gestion clavier ===
+  // =============================================================
+  // 🎹 GESTION CLAVIER
+  // =============================================================
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!hasFocus) return;
-
       scrollToBottom();
 
-      // === MODE NANO SIMPLIFIÉ ===
+      // === MODE NANO ===
       if (nanoMode) {
-        // CTRL + S → Sauvegarder
         if (e.ctrlKey && e.key.toLowerCase() === 's') {
           e.preventDefault();
           fetch('/api/terminal/nano', {
@@ -75,14 +104,10 @@ const Terminal: React.FC = () => {
               setNanoText('');
               setNanoFilename('');
             })
-            .catch((err) => {
-              console.error('Erreur lors de l’enregistrement :', err);
-              alert("Erreur lors de l'enregistrement du fichier.");
-            });
+            .catch(() => alert("Erreur lors de l'enregistrement du fichier."));
           return;
         }
 
-        // CTRL + Q → Quitter
         if (e.ctrlKey && e.key.toLowerCase() === 'q') {
           e.preventDefault();
           setNanoMode(false);
@@ -91,15 +116,11 @@ const Terminal: React.FC = () => {
           return;
         }
 
-        // Le reste est géré directement par contentEditable → aucune action ici
         return;
       }
 
-      // === TERMINAL NORMAL ===
-      if (e.ctrlKey && e.key.toLowerCase() === 'v') {
-        // Laisse le paste handler gérer ça
-        return;
-      }
+      // === MODE TERMINAL CLASSIQUE ===
+      if (e.ctrlKey && e.key.toLowerCase() === 'v') return;
 
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -109,25 +130,22 @@ const Terminal: React.FC = () => {
 
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
-        const before = text.slice(0, cursorIndex);
-        const after = text.slice(cursorIndex);
-        const newText = before + e.key + after;
+        const newText = text.slice(0, cursorIndex) + e.key + text.slice(cursorIndex);
         setText(newText);
         setCursorIndex(cursorIndex + 1);
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         if (cursorIndex > 0) {
-          const before = text.slice(0, cursorIndex - 1);
-          const after = text.slice(cursorIndex);
-          setText(before + after);
+          const newText = text.slice(0, cursorIndex - 1) + text.slice(cursorIndex);
+          setText(newText);
           setCursorIndex(cursorIndex - 1);
         }
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        setCursorIndex((prev) => Math.max(0, prev - 1));
+        setCursorIndex(Math.max(0, cursorIndex - 1));
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        setCursorIndex((prev) => Math.min(text.length, prev + 1));
+        setCursorIndex(Math.min(text.length, cursorIndex + 1));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         if (history.length > 0) {
@@ -156,16 +174,12 @@ const Terminal: React.FC = () => {
       const pasted = e.clipboardData?.getData('text') || '';
       if (!pasted) return;
       e.preventDefault();
-
-      if (nanoMode) {
-        setNanoText((prev) => prev + pasted);
-      } else {
-        const before = text.slice(0, cursorIndex);
-        const after = text.slice(cursorIndex);
-        setText(before + pasted + after);
+      if (nanoMode) setNanoText((prev) => prev + pasted);
+      else {
+        const newText = text.slice(0, cursorIndex) + pasted + text.slice(cursorIndex);
+        setText(newText);
         setCursorIndex(cursorIndex + pasted.length);
       }
-
       scrollToBottom();
     };
 
@@ -177,65 +191,120 @@ const Terminal: React.FC = () => {
     };
   }, [hasFocus, nanoMode, text, cursorIndex, nanoText, nanoFilename, currentPath, history, historyIndex, token]);
 
-  // === Exécution des commandes ===
-  const executeCommand = async (command: string) => {
-    // Ajoute la ligne avec le prompt et la commande tapée
+  // =============================================================
+  // 📁 COMMANDES LOCALES
+  // =============================================================
+  const handleLocalCommand = (cmd: string, args: string[]): string => {
+    const fs = getLocalFS();
+    const dir = resolvePath(fs, currentPath);
+    if (!dir) return `Chemin invalide (${currentPath})`;
+
+    switch (cmd) {
+      case 'ls':
+        return Object.keys(dir.children).join('  ') || 'Dossier vide.';
+      case 'cd': {
+        const target = args[0];
+        if (!target) return 'Usage : cd <dossier>';
+        if (target === '..') {
+          if (currentPath === '/home') return 'Déjà à la racine.';
+          const newPath = currentPath.split('/').slice(0, -1).join('/') || '/';
+          setCurrentPath(newPath);
+          return '';
+        }
+        const next = dir.children[target];
+        if (!next || next.type !== 'dir') return `Aucun dossier nommé "${target}".`;
+        setCurrentPath(`${currentPath}/${target}`.replace(/\/+/g, '/'));
+        return '';
+      }
+      case 'mkdir': {
+        const name = args[0];
+        if (!name) return 'Usage : mkdir <nom>';
+        if (dir.children[name]) return 'Dossier déjà existant.';
+        dir.children[name] = { type: 'dir', children: {} };
+        saveLocalFS(fs);
+        return `Dossier "${name}" créé.`;
+      }
+      case 'rmdir': {
+        const name = args[0];
+        if (!name) return 'Usage : rmdir <nom>';
+        const target = dir.children[name];
+        if (!target || target.type !== 'dir') return 'Dossier introuvable.';
+        if (Object.keys(target.children).length > 0) return 'Dossier non vide.';
+        delete dir.children[name];
+        saveLocalFS(fs);
+        return `Dossier "${name}" supprimé.`;
+      }
+      case 'mv': {
+        const [src, dest] = args;
+        if (!src || !dest) return 'Usage : mv <source> <destination>';
+        if (!dir.children[src]) return `Aucun élément nommé "${src}".`;
+        dir.children[dest] = dir.children[src];
+        delete dir.children[src];
+        saveLocalFS(fs);
+        return `Déplacé/renommé "${src}" → "${dest}".`;
+      }
+      default:
+        return '';
+    }
+  };
+
+  // =============================================================
+  // ⚙️ EXÉCUTION DE COMMANDE
+  // =============================================================
+  const executeCommand = async (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+
+    const [cmd, ...args] = trimmed.split(/\s+/);
+
     const commandLine = (
       <pre className="terminal-line">
         <samp>
           <span className="prompt-user-host">{username}@{systemName}</span>:
           <span className="prompt-path">~{currentPath}$ </span>
-          <kbd>{command}</kbd>
+          <kbd>{trimmed}</kbd>
         </samp>
       </pre>
     );
     setOutput((prev) => [...prev, commandLine]);
     setText('');
 
+    const localCommands = ['ls', 'cd', 'mkdir', 'rmdir', 'mv'];
+
     try {
-      const response = await fetch('/api/terminal', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ command, path: currentPath }),
-      });
-
-      const data = await response.ok ? await response.json() : { output: `Erreur : ${response.statusText}` };
-
-      if (data.newPath) setCurrentPath(data.newPath);
-
-      // === Action : ouvrir le mode nano ===
-      if (data.action === 'openEditor') {
-        const fileRes = await fetch(`/api/terminal/nano?filename=${data.filename}&path=${currentPath}`);
-        const fileData = await fileRes.json();
-        setNanoText(fileData.content || '');
-        setNanoFilename(data.filename);
-        setNanoMode(true);
-        setText('');
-        return;
-      }
-
-      // === Action : ouvrir une fenêtre ===
-      if (data.action === 'openWindow') {
-        const payload = {
-          type: 'openWindow',
-          payload: {
-            title: 'Éditeur de fichier',
-            src: data.src,
+      if (localCommands.includes(cmd)) {
+        const result = handleLocalCommand(cmd, args);
+        if (result) {
+          setOutput((prev) => [...prev, <pre className="terminal-line"><samp>{result}</samp></pre>]);
+        }
+      } else {
+        const response = await fetch('/api/terminal', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
-        };
-        window.parent.postMessage(payload, '*');
-      }
+          body: JSON.stringify({ command: trimmed, path: currentPath }),
+        });
+        const data = await response.ok ? await response.json() : { output: `Erreur : ${response.statusText}` };
 
-      // === Affichage du résultat ===
-      if (data.output) {
-        const lines = String(data.output).split('\n');
-        const outputLines = lines.map((line, index) => (
-          <pre key={`out-${index}`} className="terminal-line"><samp>{line}</samp></pre>
-        ));
-        setOutput((prev) => [...prev, ...outputLines]);
+        // Mode nano
+        if (data.action === 'openEditor') {
+          const fileRes = await fetch(`/api/terminal/nano?filename=${data.filename}&path=${currentPath}`);
+          const fileData = await fileRes.json();
+          setNanoText(fileData.content || '');
+          setNanoFilename(data.filename);
+          setNanoMode(true);
+          return;
+        }
+
+        if (data.output) {
+          const lines = String(data.output).split('\n');
+          const out = lines.map((line, i) => (
+            <pre key={`out-${i}`} className="terminal-line"><samp>{line}</samp></pre>
+          ));
+          setOutput((prev) => [...prev, ...out]);
+        }
       }
     } catch (err) {
       setOutput((prev) => [
@@ -244,14 +313,16 @@ const Terminal: React.FC = () => {
       ]);
     }
 
-    setHistory((prev) => [...prev.filter((c) => c !== command), command]);
+    setHistory((prev) => [...prev.filter((c) => c !== trimmed), trimmed]);
     setHistoryIndex(-1);
     setText('');
     setCursorIndex(0);
     scrollToBottom();
   };
 
-  // === Rendu du texte courant avec curseur ===
+  // =============================================================
+  // 🖥️ RENDU
+  // =============================================================
   const renderCurrentLine = () => {
     const before = text.slice(0, cursorIndex);
     const after = text.slice(cursorIndex);
@@ -279,7 +350,7 @@ const Terminal: React.FC = () => {
       {!nanoMode && output.map((line, index) => <div key={index}>{line}</div>)}
       {!nanoMode && renderCurrentLine()}
 
-      {/* === MODE NANO SIMPLIFIÉ === */}
+      {/* === MODE NANO === */}
       {nanoMode && (
         <>
           <pre

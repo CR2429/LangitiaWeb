@@ -1,27 +1,29 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import './DraggableWindow.css';
+import { marked } from 'marked';
+import Terminal from './Terminal';
 
 type Props = {
-  id: number;
+  id: string;
   title: string;
-  src: string;
+  type: string;
+  content: string;
   x: number;
   y: number;
   z: number;
-  onClose: (id: number) => void;
-  onFocus: (id: number) => void;
+  hidden: boolean;
+  onClose: (id: string) => void;
+  onFocus: (id: string) => void;
 };
 
-const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) => {
+const DraggableWindow = ({ id, title, type, content, x, y, z, hidden, onClose, onFocus }: Props) => {
   const windowRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x, y });
   const [size, setSize] = useState({ width: 600, height: 400 });
 
-  // Refs pour stocker l'état de drag et resize
   const dragState = useRef<{ startMouseX: number; startMouseY: number; startX: number; startY: number; } | null>(null);
   const resizeState = useRef<{ startMouseX: number; startMouseY: number; startWidth: number; startHeight: number; } | null>(null);
 
-  // Gestion unifiée du mouvement (drag & resize)
   const onPointerMove = useCallback((e: PointerEvent) => {
     if (dragState.current) {
       const dx = e.clientX - dragState.current.startMouseX;
@@ -37,7 +39,6 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
     }
   }, []);
 
-  // Relâchement du pointeur => arrêt du drag/resize
   const onPointerUp = useCallback(() => {
     dragState.current = null;
     resizeState.current = null;
@@ -45,7 +46,6 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
     window.removeEventListener('pointerup', onPointerUp);
   }, [onPointerMove]);
 
-  // Démarrage du drag via Pointer Events + pointer capture
   const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -58,10 +58,8 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
     };
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
-  // Démarrage du resize via Pointer Events + pointer capture
   const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -73,10 +71,8 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
     };
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
-  // Cleanup en cas de démontage
   useEffect(() => {
     return () => {
       window.removeEventListener('pointermove', onPointerMove);
@@ -84,19 +80,22 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
     };
   }, [onPointerMove, onPointerUp]);
 
-  //mettre le focus en cas de iframe touch
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'iframeFocus') {
-        onFocus(event.data.id);
-      }
-    };
+  if (hidden) return null;
 
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [id, onFocus]);
+  const renderContent = () => {
+    switch (type) {
+      case 'terminal': return <Terminal />;
+      case 'text/plain':
+      case 'file-text': return <pre className="file-text-content">{content}</pre>;
+      case 'markdown':
+      case 'file-md': return <div className="file-text-content" dangerouslySetInnerHTML={{ __html: marked(content || '') }} />;
+      case 'image/png':
+      case 'file-image': return <img src={content} alt={title} className="file-image" />;
+      case 'video/mp4':
+      case 'file-video': return <video controls className="file-media"><source src={content} /></video>;
+      default: return <p style={{ padding: '1rem' }}>Fichier sans rendu spécifique.</p>;
+    }
+  };
 
   return (
     <div
@@ -105,24 +104,12 @@ const DraggableWindow = ({ id, title, src, x, y, z, onClose, onFocus }: Props) =
       style={{ top: position.y, left: position.x, width: size.width, height: size.height, zIndex: z }}
       onPointerDown={() => onFocus(id)}
     >
-      <div className="window-header" onPointerDown={startDrag} style={{ touchAction: 'none', cursor: 'move' }}>
+      <div className="window-header" onPointerDown={startDrag}>
         <span>{title}</span>
-        <button onPointerDown={e => e.stopPropagation()} onClick={() => onClose(id)}>X</button>
+        <button onClick={() => onClose(id)}>X</button>
       </div>
-      <iframe
-        onFocusCapture={() => onFocus(id)}
-        src={src}
-        title={title}
-        style={{
-          flexGrow: 1,
-          width: '100%',
-          border: 'none',
-          overflow: 'hidden',
-          display: 'block'
-        }}
-        sandbox="allow-scripts allow-same-origin"
-      />
-      <div className="resize-handle" onPointerDown={startResize} style={{ touchAction: 'none', cursor: 'se-resize' }} />
+      <div className="window-body">{renderContent()}</div>
+      <div className="resize-handle" onPointerDown={startResize} />
     </div>
   );
 };

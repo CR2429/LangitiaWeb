@@ -82,3 +82,7 @@
   );
   background-repeat: no-repeat;
 }
+
+.window-body {
+  height: 100%;
+}
