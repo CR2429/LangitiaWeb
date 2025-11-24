@@ -1,9 +1,19 @@
+// Terminal.tsx
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import './Terminal.css';
+import {
+  loadLocalFS,
+  saveLocalFS,
+  listFilesAtPath,
+  directoryExists,
+  normalizePath,
+  parentPath,
+  getFullPath,
+  FileNode,
+  LocalFS
+} from '../utils/FileSystem';
 
-// =============================================================
-// 🔧 UTIL - ID DRAGGABLE (optionnel pour compatibilité future)
-// =============================================================
+// Id draggable, au cas où tu veux t'en servir plus tard
 const useDraggableId = () => {
   return useMemo(() => {
     const p = new URLSearchParams(window.location.search);
@@ -12,34 +22,6 @@ const useDraggableId = () => {
   }, []);
 };
 
-// =============================================================
-// 💾 GESTION DU SYSTÈME DE FICHIERS LOCAL
-// =============================================================
-const getLocalFS = (): any => {
-  const raw = localStorage.getItem('localFS');
-  if (!raw) {
-    const base = { root: { type: 'dir', children: { home: { type: 'dir', children: {} } } } };
-    localStorage.setItem('localFS', JSON.stringify(base));
-    return base;
-  }
-  return JSON.parse(raw);
-};
-
-const saveLocalFS = (fs: any) => localStorage.setItem('localFS', JSON.stringify(fs));
-
-const resolvePath = (fs: any, path: string): any => {
-  const parts = path.replace(/^\/+/, '').split('/').filter(Boolean);
-  let node = fs.root;
-  for (const part of parts) {
-    if (!node.children[part]) return null;
-    node = node.children[part];
-  }
-  return node;
-};
-
-// =============================================================
-// 🧠 TERMINAL PRINCIPAL
-// =============================================================
 const Terminal: React.FC = () => {
   const [username] = useState(() => localStorage.getItem('authUser') || 'unlog');
   const [systemName] = useState('CartageOS');
@@ -51,60 +33,41 @@ const Terminal: React.FC = () => {
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // === Mode Nano ===
+  // Mode "nano" simplifié
   const [nanoMode, setNanoMode] = useState(false);
   const [nanoText, setNanoText] = useState('');
   const [nanoFilename, setNanoFilename] = useState('');
 
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
-  const token = localStorage.getItem('authToken') || '';
   const draggableId = useDraggableId();
 
-  // === Scroll automatique ===
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
       terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     });
   };
 
-  // === Focus sur clic ===
   useEffect(() => {
     const handleClick = () => terminalRef.current?.focus();
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  // =============================================================
-  // 🎹 GESTION CLAVIER
-  // =============================================================
+  // Gestion clavier
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!hasFocus) return;
       scrollToBottom();
 
-      // === MODE NANO ===
+      // Mode nano
       if (nanoMode) {
         if (e.ctrlKey && e.key.toLowerCase() === 's') {
           e.preventDefault();
-          fetch('/api/terminal/nano', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              filename: nanoFilename,
-              path: currentPath,
-              content: nanoText,
-            }),
-          })
-            .then(() => {
-              setNanoMode(false);
-              setNanoText('');
-              setNanoFilename('');
-            })
-            .catch(() => alert("Erreur lors de l'enregistrement du fichier."));
+          // Ici, tu pourras plus tard brancher la sauvegarde sur le FS
+          setNanoMode(false);
+          setNanoText('');
+          setNanoFilename('');
           return;
         }
 
@@ -119,7 +82,7 @@ const Terminal: React.FC = () => {
         return;
       }
 
-      // === MODE TERMINAL CLASSIQUE ===
+      // Terminal classique
       if (e.ctrlKey && e.key.toLowerCase() === 'v') return;
 
       if (e.key === 'Enter') {
@@ -174,7 +137,7 @@ const Terminal: React.FC = () => {
       const pasted = e.clipboardData?.getData('text') || '';
       if (!pasted) return;
       e.preventDefault();
-      if (nanoMode) setNanoText((prev) => prev + pasted);
+      if (nanoMode) setNanoText(prev => prev + pasted);
       else {
         const newText = text.slice(0, cursorIndex) + pasted + text.slice(cursorIndex);
         setText(newText);
@@ -189,69 +152,185 @@ const Terminal: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('paste', handlePaste);
     };
-  }, [hasFocus, nanoMode, text, cursorIndex, nanoText, nanoFilename, currentPath, history, historyIndex, token]);
+  }, [hasFocus, nanoMode, text, cursorIndex, nanoText, nanoFilename, currentPath, history, historyIndex]);
 
-  // =============================================================
-  // 📁 COMMANDES LOCALES
-  // =============================================================
+  // Commandes locales
   const handleLocalCommand = (cmd: string, args: string[]): string => {
-    const fs = getLocalFS();
-    const dir = resolvePath(fs, currentPath);
-    if (!dir) return `Chemin invalide (${currentPath})`;
+    let fs = loadLocalFS();
 
     switch (cmd) {
-      case 'ls':
-        return Object.keys(dir.children).join('  ') || 'Dossier vide.';
+      case 'ls': {
+        const entries = listFilesAtPath(fs, currentPath);
+        if (entries.length === 0) return 'Dossier vide.';
+        return entries.map(e => e.nom).join('  ');
+      }
+
       case 'cd': {
         const target = args[0];
         if (!target) return 'Usage : cd <dossier>';
+
         if (target === '..') {
-          if (currentPath === '/home') return 'Déjà à la racine.';
-          const newPath = currentPath.split('/').slice(0, -1).join('/') || '/';
+          if (currentPath === '/home' || currentPath === '/') {
+            return 'Deja a la racine.';
+          }
+          const newPath = parentPath(currentPath);
           setCurrentPath(newPath);
           return '';
         }
-        const next = dir.children[target];
-        if (!next || next.type !== 'dir') return `Aucun dossier nommé "${target}".`;
-        setCurrentPath(`${currentPath}/${target}`.replace(/\/+/g, '/'));
+
+        const newPath = normalizePath(
+          target.startsWith('/') ? target : currentPath + '/' + target
+        );
+
+        if (!directoryExists(fs, newPath)) {
+          return `Aucun dossier nommé "${target}".`;
+        }
+
+        setCurrentPath(newPath);
         return '';
       }
+
       case 'mkdir': {
         const name = args[0];
         if (!name) return 'Usage : mkdir <nom>';
-        if (dir.children[name]) return 'Dossier déjà existant.';
-        dir.children[name] = { type: 'dir', children: {} };
-        saveLocalFS(fs);
+
+        if (name.includes('/') || name.includes('\\')) {
+          return 'Nom invalide.';
+        }
+
+        const existing = listFilesAtPath(fs, currentPath).find(f => f.nom === name);
+        if (existing) return 'Element deja existant.';
+
+        const newDir: FileNode = {
+          id: crypto.randomUUID(),
+          nom: name,
+          type: 'dir',
+          path: normalizePath(currentPath),
+          updatedAt: new Date().toISOString()
+        };
+
+        const newFS: LocalFS = { files: [...fs.files, newDir] };
+        saveLocalFS(newFS);
         return `Dossier "${name}" créé.`;
       }
-      case 'rmdir': {
+
+      case "rmdir": {
         const name = args[0];
         if (!name) return 'Usage : rmdir <nom>';
-        const target = dir.children[name];
-        if (!target || target.type !== 'dir') return 'Dossier introuvable.';
-        if (Object.keys(target.children).length > 0) return 'Dossier non vide.';
-        delete dir.children[name];
-        saveLocalFS(fs);
+
+        const dirNode = fs.files.find(
+          f =>
+            f.type === 'dir' &&
+            f.nom === name &&
+            normalizePath(f.path) === normalizePath(currentPath)
+        );
+        if (!dirNode) return 'Dossier introuvable.';
+
+        const dirFullPath = getFullPath(dirNode);   // ex: "/home/test"
+        const parentPath = normalizePath(currentPath); // ex: "/home"
+
+        // 1️⃣ On modifie tous les enfants pour les remonter d’un niveau
+        const updatedFiles = fs.files.map(f => {
+          const fPath = normalizePath(f.path);
+
+          // Si l'élément est un enfant direct ou en profondeur
+          if (fPath.startsWith(dirFullPath)) {
+            const rest = fPath.substring(dirFullPath.length);   // ex: "/test2"
+            const newPath = normalizePath(parentPath + rest);   // ex: "/home/test2"
+            return { ...f, path: newPath };
+          }
+
+          return f;
+        });
+
+        // 2️⃣ On supprime uniquement le dossier ciblé
+        const newFS: LocalFS = {
+          files: updatedFiles.filter(f => f.id !== dirNode.id)
+        };
+
+        saveLocalFS(newFS);
         return `Dossier "${name}" supprimé.`;
       }
+
       case 'mv': {
-        const [src, dest] = args;
-        if (!src || !dest) return 'Usage : mv <source> <destination>';
-        if (!dir.children[src]) return `Aucun élément nommé "${src}".`;
-        dir.children[dest] = dir.children[src];
-        delete dir.children[src];
-        saveLocalFS(fs);
-        return `Déplacé/renommé "${src}" → "${dest}".`;
+        const [srcName, destArg] = args;
+        if (!srcName || !destArg) return 'Usage : mv <source> <destination>';
+
+        const srcNode = fs.files.find(
+          f =>
+            f.nom === srcName &&
+            normalizePath(f.path) === normalizePath(currentPath)
+        );
+        if (!srcNode) return `Aucun élément nommé "${srcName}".`;
+
+        let destPath: string;
+        let destName: string;
+
+        if (destArg === '..' || destArg === '../') {
+          destPath = parentPath(currentPath);
+          destName = srcName;
+        } else {
+          const rawFull = destArg.startsWith('/')
+            ? destArg
+            : currentPath.replace(/\/+$/, '') + '/' + destArg;
+
+          const full = normalizePath(rawFull);
+          const parts = full.split('/').filter(Boolean);
+          if (parts.length === 0) return 'Destination invalide.';
+
+          const last = parts[parts.length - 1];
+          const dirCandidate = '/' + parts.slice(0, -1).join('/');
+          const dirCandidateNormalized = dirCandidate === '/' ? '/' : normalizePath(dirCandidate);
+
+          const hasDir = fs.files.some(
+            f => f.type === 'dir' && getFullPath(f) === full
+          );
+
+          if (hasDir) {
+            destPath = full;
+            destName = srcName;
+          } else {
+            destPath = dirCandidateNormalized;
+            destName = last;
+          }
+        }
+
+        if (!directoryExists(fs, destPath)) {
+          return 'Dossier de destination introuvable.';
+        }
+
+        const conflict = fs.files.find(
+          f =>
+            f.nom === destName &&
+            normalizePath(f.path) === normalizePath(destPath)
+        );
+        if (conflict && conflict.id !== srcNode.id) {
+          return 'Un element existe deja a cet emplacement.';
+        }
+
+        const newFS: LocalFS = {
+          files: fs.files.map(f =>
+            f.id === srcNode.id
+              ? {
+                  ...f,
+                  nom: destName,
+                  path: normalizePath(destPath),
+                  updatedAt: new Date().toISOString()
+                }
+              : f
+          )
+        };
+
+        saveLocalFS(newFS);
+        return `Deplacé/renommé "${srcName}" vers ${normalizePath(destPath)}/${destName}.`;
       }
+
       default:
-        return '';
+        return `Commande inconnue: ${cmd}`;
     }
   };
 
-  // =============================================================
-  // ⚙️ EXÉCUTION DE COMMANDE
-  // =============================================================
-  const executeCommand = async (raw: string) => {
+  const executeCommand = (raw: string) => {
     const trimmed = raw.trim();
     if (!trimmed) return;
 
@@ -266,63 +345,37 @@ const Terminal: React.FC = () => {
         </samp>
       </pre>
     );
-    setOutput((prev) => [...prev, commandLine]);
+    setOutput(prev => [...prev, commandLine]);
     setText('');
 
-    const localCommands = ['ls', 'cd', 'mkdir', 'rmdir', 'mv'];
-
     try {
-      if (localCommands.includes(cmd)) {
-        const result = handleLocalCommand(cmd, args);
-        if (result) {
-          setOutput((prev) => [...prev, <pre className="terminal-line"><samp>{result}</samp></pre>]);
-        }
-      } else {
-        const response = await fetch('/api/terminal', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ command: trimmed, path: currentPath }),
-        });
-        const data = await response.ok ? await response.json() : { output: `Erreur : ${response.statusText}` };
-
-        // Mode nano
-        if (data.action === 'openEditor') {
-          const fileRes = await fetch(`/api/terminal/nano?filename=${data.filename}&path=${currentPath}`);
-          const fileData = await fileRes.json();
-          setNanoText(fileData.content || '');
-          setNanoFilename(data.filename);
-          setNanoMode(true);
-          return;
-        }
-
-        if (data.output) {
-          const lines = String(data.output).split('\n');
-          const out = lines.map((line, i) => (
-            <pre key={`out-${i}`} className="terminal-line"><samp>{line}</samp></pre>
-          ));
-          setOutput((prev) => [...prev, ...out]);
-        }
+      const result = handleLocalCommand(cmd, args);
+      if (result) {
+        setOutput(prev => [
+          ...prev,
+          <pre className="terminal-line" key={prev.length + 1}>
+            <samp>{result}</samp>
+          </pre>
+        ]);
       }
     } catch (err) {
-      setOutput((prev) => [
+      const message =
+        err instanceof Error ? err.message : 'Erreur inconnue.';
+      setOutput(prev => [
         ...prev,
-        <pre className="terminal-line"><samp>Erreur : {(err as Error).message}</samp></pre>,
+        <pre className="terminal-line" key={prev.length + 1}>
+          <samp>Erreur : {message}</samp>
+        </pre>
       ]);
     }
 
-    setHistory((prev) => [...prev.filter((c) => c !== trimmed), trimmed]);
+    setHistory(prev => [...prev.filter(c => c !== trimmed), trimmed]);
     setHistoryIndex(-1);
     setText('');
     setCursorIndex(0);
     scrollToBottom();
   };
 
-  // =============================================================
-  // 🖥️ RENDU
-  // =============================================================
   const renderCurrentLine = () => {
     const before = text.slice(0, cursorIndex);
     const after = text.slice(cursorIndex);
@@ -350,14 +403,13 @@ const Terminal: React.FC = () => {
       {!nanoMode && output.map((line, index) => <div key={index}>{line}</div>)}
       {!nanoMode && renderCurrentLine()}
 
-      {/* === MODE NANO === */}
       {nanoMode && (
         <>
           <pre
             className="nano-line"
             contentEditable
             suppressContentEditableWarning
-            onInput={(e) => setNanoText(e.currentTarget.textContent || '')}
+            onInput={e => setNanoText(e.currentTarget.textContent || '')}
           >
             {nanoText}
           </pre>

@@ -1,9 +1,25 @@
+// Home.tsx
 import { useEffect, useState } from 'react';
 import './Home.css';
 import MenuBar from './MenuBar';
 import DraggableWindow from './DraggableWindow';
 import { syncFiles } from '../utils/syncClient';
-import { FileEarmarkFont, FileEarmarkImage, FileEarmarkPlay, Folder2 } from "react-bootstrap-icons";
+import {
+  FileEarmarkFont,
+  FileEarmarkImage,
+  FileEarmarkPlay,
+  Folder2
+} from 'react-bootstrap-icons';
+
+import {
+  LocalFS,
+  FileNode,
+  loadLocalFS,
+  saveLocalFS,
+  listFilesAtPath,
+  normalizePath,
+  LOCAL_FS_UPDATED_EVENT
+} from '../utils/FileSystem';
 
 type WindowData = {
   id: string;
@@ -15,7 +31,7 @@ type WindowData = {
   y: number;
   z: number;
   hidden: boolean;
-  ephemeral?: boolean; // ✅ Pour savoir si elle doit être détruite à la fermeture
+  ephemeral?: boolean;
 };
 
 const Home = () => {
@@ -23,127 +39,126 @@ const Home = () => {
     localStorage.getItem('protocolApproved') === 'true' ? 'interface' : 'boot'
   );
 
-  // --- Gestion du système de fichiers local ---
-  const [localFS, setLocalFS] = useState(() => {
-    const saved = localStorage.getItem("localFS");
-    return saved
-      ? JSON.parse(saved)
-      : { root: { type: "dir", children: { home: { type: "dir", children: {} } } } };
-  });
-
+  const [localFS, setLocalFS] = useState<LocalFS>(() => loadLocalFS());
   const [windows, setWindows] = useState<WindowData[]>([]);
-  const [nextZ, setNextZ] = useState(1);
 
-  // --- 1️⃣ Synchronisation initiale + auto toutes les minutes ---
+  // Met à jour le state quand le FS local change (via Terminal ou sync)
+  useEffect(() => {
+    const handleUpdate = () => {
+      setLocalFS(loadLocalFS());
+    };
+
+    window.addEventListener(LOCAL_FS_UPDATED_EVENT, handleUpdate as EventListener);
+    window.addEventListener('storage', handleUpdate);
+
+    return () => {
+      window.removeEventListener(LOCAL_FS_UPDATED_EVENT, handleUpdate as EventListener);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  // SYNC AUTO toutes les 10 secondes, uniquement si interface affichée
   useEffect(() => {
     if (step !== 'interface') return;
 
-    const doSync = async () => {
-      const localFiles = windows.map(w => ({ id: w.id, updated_at: w.updatedAt }));
-      const { new_files = [], updated_files = [], deleted_files = [] } = await syncFiles(localFiles);
+    const interval = setInterval(async () => {
+      try {
+        const currentFS = loadLocalFS();
 
-      setWindows(prev => {
-        let result = prev.filter(w => !deleted_files.includes(w.id));
-        result = result.map(w => {
-          const update = updated_files.find(f => f.id === w.id);
-          return update
-            ? { ...w, title: update.title, content: update.content, updatedAt: update.updated_at }
-            : w;
-        });
-        const maxZ = result.length ? Math.max(...result.map(w => w.z)) : 1;
-        result = [
-          ...result,
-          ...new_files.map((f, i) => ({
+        // On ne synchronise que les fichiers, pas les dossiers
+        const clientList = currentFS.files
+          .filter(f => f.type !== 'dir' && normalizePath(f.path).startsWith('/home'))
+          .map(f => ({
             id: f.id,
-            title: f.title,
-            type: f.type,
-            content: f.content,
-            updatedAt: f.updated_at,
-            x: window.innerWidth / 2 - 300,
-            y: window.innerHeight / 2 - 200,
-            z: maxZ + i + 1,
-            hidden: true,
-            ephemeral: false
-          }))
-        ];
-        return result;
-      });
-    };
+            updated_at: f.updatedAt || null
+          }));
 
-    doSync();
-    const interval = setInterval(doSync, 60000);
+        const {
+          new_files = [],
+          updated_files = [],
+          deleted_files = []
+        } = await syncFiles(clientList);
+
+        if (
+          new_files.length === 0 &&
+          updated_files.length === 0 &&
+          deleted_files.length === 0
+        ) {
+          return;
+        }
+
+        const newFS: LocalFS = {
+          files: [...currentFS.files]
+        };
+
+        // Supprime les fichiers supprimés côté serveur
+        deleted_files.forEach((id: string) => {
+          newFS.files = newFS.files.filter(f => f.id !== id);
+        });
+
+        // Ajoute les nouveaux fichiers
+        new_files.forEach((f: any) => {
+          newFS.files.push({
+            id: f.id,
+            nom: f.title,
+            type: f.type,
+            path: '/home',
+            content: f.content || '',
+            updatedAt: f.updated_at || null
+          });
+        });
+
+        // Met à jour les fichiers existants
+        updated_files.forEach((f: any) => {
+          const index = newFS.files.findIndex(ff => ff.id === f.id);
+          if (index >= 0) {
+            newFS.files[index] = {
+              ...newFS.files[index],
+              type: f.type,
+              content: f.content || '',
+              updatedAt: f.updated_at || null
+            };
+          }
+        });
+
+        saveLocalFS(newFS);
+        setLocalFS(newFS);
+      } catch (err) {
+        console.error('Erreur sync :', err);
+      }
+    }, 10000);
+
     return () => clearInterval(interval);
   }, [step]);
 
-  // --- 2️⃣ Écouter les changements de localStorage ---
-  useEffect(() => {
-    const handleStorage = () => {
-      const saved = localStorage.getItem("localFS");
-      if (saved) setLocalFS(JSON.parse(saved));
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
-
-  // --- 3️⃣ Extraire les fichiers/dossiers d’un chemin ---
-  const getFilesInPath = (fs: any, path: string) => {
-    const parts = path.split("/").filter(Boolean);
-    let current = fs.root;
-    for (const part of parts) {
-      if (current.children?.[part]) current = current.children[part];
-      else return [];
-    }
-    return Object.entries(current.children || {}).map(([name, node]: [string, any]) => ({
-      name,
-      type: node.type,
-    }));
-  };
-
-  // --- 4️⃣ Ouvrir un fichier/dossier depuis le bureau ---
-  const handleFileClick = (fileName: string) => {
-    const fileId = crypto.randomUUID();
+  // Ouverture d'une fenêtre dossier
+  const openFolderWindow = (file: FileNode) => {
     const maxZ = windows.length ? Math.max(...windows.map(w => w.z)) + 1 : 1;
 
     setWindows(prev => [
       ...prev,
       {
-        id: fileId,
-        title: fileName,
-        type: "folder",
-        content: "",
+        id: crypto.randomUUID(),
+        title: file.nom,
+        type: 'folder',
+        content: '',
         updatedAt: new Date().toISOString(),
         x: window.innerWidth / 2 - 300,
         y: window.innerHeight / 2 - 200,
         z: maxZ,
         hidden: false,
-        ephemeral: false,
+        ephemeral: false
       }
     ]);
   };
 
-  // --- 5️⃣ Fermer une fenêtre ---
-  const closeWindow = (id: string) => {
-    setWindows(prev => {
-      const target = prev.find(w => w.id === id);
-      if (!target) return prev;
-      if (target.ephemeral) return prev.filter(w => w.id !== id); // Supprime complètement
-      return prev.map(w => (w.id === id ? { ...w, hidden: true } : w)); // Cache sinon
-    });
-  };
+  // Terminal
+  const openTerminal = () => {
+    const maxZ = windows.length ? Math.max(...windows.map(w => w.z)) + 1 : 1;
 
-  // --- 6️⃣ Focus ---
-  const bringToFront = (id: string) => {
-    setWindows(prev => {
-      const maxZ = Math.max(...prev.map(w => w.z));
-      setNextZ(maxZ + 1);
-      return prev.map(w => (w.id === id ? { ...w, z: maxZ + 1 } : w));
-    });
-  };
-
-  // --- 7️⃣ Ouvrir un nouveau Terminal ---
-  const openTerminalWindow = () => {
-    setWindows(prev => {
-      const newWin: WindowData = {
+    setWindows(prev => [
+      ...prev,
+      {
         id: crypto.randomUUID(),
         title: 'Terminal',
         type: 'terminal',
@@ -151,32 +166,51 @@ const Home = () => {
         updatedAt: new Date().toISOString(),
         x: window.innerWidth / 2 - 300 + Math.random() * 100 - 50,
         y: window.innerHeight / 2 - 200 + Math.random() * 100 - 50,
-        z: prev.length ? Math.max(...prev.map(w => w.z)) + 1 : 1,
+        z: maxZ,
         hidden: false,
-        ephemeral: true,
-      };
-      return [...prev, newWin];
+        ephemeral: true
+      }
+    ]);
+  };
+
+  const closeWindow = (id: string) => {
+    setWindows(prev => {
+      const win = prev.find(w => w.id === id);
+      if (!win) return prev;
+      if (win.ephemeral) return prev.filter(w => w.id !== id);
+      return prev.map(w => (w.id === id ? { ...w, hidden: true } : w));
     });
   };
 
-  // --- 8️⃣ Icônes du bureau ---
+  const bringToFront = (id: string) => {
+    setWindows(prev => {
+      const maxZ = Math.max(...prev.map(w => w.z));
+      return prev.map(w => (w.id === id ? { ...w, z: maxZ + 1 } : w));
+    });
+  };
+
   const getFileIcon = (type: string, className: string) => {
     switch (type) {
-      case 'txt': return <FileEarmarkFont className={className} />;
-      case 'png': return <FileEarmarkImage className={className} />;
-      case 'mp4': return <FileEarmarkPlay className={className} />;
-      case 'dir': return <Folder2 className={className} />;
-      default: return <div />;
+      case 'txt':
+        return <FileEarmarkFont className={className} />;
+      case 'png':
+        return <FileEarmarkImage className={className} />;
+      case 'mp4':
+        return <FileEarmarkPlay className={className} />;
+      case 'dir':
+        return <Folder2 className={className} />;
+      default:
+        return <div />;
     }
   };
 
-  // --- 9️⃣ Validation du protocole ---
   const handleApproveProtocol = () => {
     localStorage.setItem('protocolApproved', 'true');
     setStep('interface');
   };
 
-  // --- 🔟 Rendu ---
+  const desktopFiles = listFilesAtPath(localFS, '/home');
+
   return (
     <>
       {step === 'boot' && (
@@ -185,9 +219,7 @@ const Home = () => {
             <h2>Bienvenue dans le système Cartage</h2>
             <p className="boot-text">
               En cliquant sur <strong>Connexion au système</strong>, vous reconnaissez avoir lu et accepté les{' '}
-              <a href="/protocoles_de_securite" target="_blank" rel="noopener noreferrer">
-                Protocoles de Sécurité
-              </a>.
+              <a href="/protocoles_de_securite">Protocoles de Sécurité</a>.
             </p>
             <button className="boot-button" onClick={handleApproveProtocol}>
               Connexion au système
@@ -198,45 +230,51 @@ const Home = () => {
 
       {step === 'interface' && (
         <div className="main-interface">
-          {/* Icônes du bureau depuis le localFS */}
           <div className="desktop-grid">
-            {getFilesInPath(localFS, "/home").map(item => (
+            {desktopFiles.map(f => (
               <div
-                key={item.name}
+                key={f.id}
                 className="desktop-icon"
-                onClick={() => handleFileClick(item.name)}
+                onClick={() => openFolderWindow(f)}
               >
                 <div className="icon-stack-large">
-                  {getFileIcon(item.type, 'icon-back')}
-                  {getFileIcon(item.type, 'icon-front')}
+                  {getFileIcon(f.type, 'icon-back')}
+                  {getFileIcon(f.type, 'icon-front')}
                 </div>
-                <span>{item.name}</span>
+                <span>{f.nom}</span>
               </div>
             ))}
           </div>
 
-          {/* Fenêtres ouvertes */}
-          {windows.map(win => (
-            <DraggableWindow
-              key={win.id}
-              id={win.id}
-              title={win.ephemeral ? win.title : `${win.title}.${win.type}`}
-              type={win.type}
-              content={win.content}
-              x={win.x}
-              y={win.y}
-              z={win.z}
-              hidden={win.hidden}
-              onClose={closeWindow}
-              onFocus={bringToFront}
-            />
-          ))}
+          {windows.map(win => {
+            const title =
+              win.type === 'terminal'
+                ? win.title
+                : win.type === 'folder'
+                  ? win.title
+                  : `${win.title}.${win.type}`;
 
-          {/* Barre de menu */}
+            return (
+              <DraggableWindow
+                key={win.id}
+                id={win.id}
+                title={title}
+                type={win.type}
+                content={win.content}
+                x={win.x}
+                y={win.y}
+                z={win.z}
+                hidden={win.hidden}
+                onClose={closeWindow}
+                onFocus={bringToFront}
+              />
+            );
+          })}
+
           <MenuBar
-            onOpenTerminal={openTerminalWindow}
-            onOpenLogin={() => console.log("Login à venir")}
-            onOpenEditText={() => console.log("Éditeur à venir")}
+            onOpenTerminal={openTerminal}
+            onOpenLogin={() => console.log('login soon')}
+            onOpenEditText={() => console.log('edit soon')}
           />
         </div>
       )}
