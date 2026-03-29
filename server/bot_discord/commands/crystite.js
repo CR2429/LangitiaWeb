@@ -97,7 +97,8 @@ module.exports = {
 
   async execute(interaction) {
     const couleur = interaction.options.getString('couleur');
-    const nombre = interaction.options.getInteger('nombre');
+    let nombre = interaction.options.getString('nombre');
+    nombre = parseInt(nombre, 10);
 
     if (nombre <= 0 || nombre > 1000) {
       await interaction.reply({ content: `❌ Nombre de crystites invalide: ${nombre}`, ephemeral: true });
