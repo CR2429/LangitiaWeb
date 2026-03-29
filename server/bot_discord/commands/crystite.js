@@ -37,17 +37,17 @@ function adjust_stat_for_hybride(stat, equip) {
   return stat;
 }
 
-function blanc() {
+async function blanc() {
   const equip = debut();
   return [equip[0], 'Blanc', equip[1], adjust_stat_for_hybride(d20(), equip), '', '', '', '', '', ''];
 }
 
-function vert() {
+async function vert() {
   const equip = debut();
   return [equip[0], 'Vert', equip[1], adjust_stat_for_hybride(d30() + d30() + d30(), equip), d10(), _1d4(), '', '', '', ''];
 }
 
-function bleu() {
+async function bleu() {
   const equip = debut();
   const stat1 = adjust_stat_for_hybride(d80() + d80() + d80() + d80() + d80(), equip);
   const stat2 = d20();
@@ -55,21 +55,31 @@ function bleu() {
   const stat4 = _1d4();
   const stat5 = _1d4();
   const stat6 = _1d5();
-  const bonus = d100() === 1 ? 'Bonus Zopu' : '';
+  const bonus = await d100() === 1 ? 'Bonus Zopu' : '';
   const statCombo = Math.random() < 0.5 ? stat5 : stat6;
   return [equip[0], 'Bleu', equip[1], stat1, stat2, stat4, stat3, statCombo, '', bonus];
 }
 
-function orange() {
+async function orange() {
   const equip = debut();
-  const stat1 = adjust_stat_for_hybride(Array.from({ length: 8 }).reduce((a) => a + d100(), 0), equip);
+
+  let stat1Raw = 0;
+  for (let i = 0; i < 8; i++) {
+    stat1Raw += parseInt(await d100(), 10);
+    console.log(stat1Raw);
+  }
+
+  const stat1 = adjust_stat_for_hybride(stat1Raw, equip);
   const stat2 = d30();
   const stat3 = d20();
   const stat4 = _1d4();
   const stat5 = _1d4();
   const stat6 = _1d5();
   const stat7 = d10();
-  const bonus = d100() <= 5 ? 'Bonus Zopu' : '';
+
+  const rollBonus = parseInt(await d100(), 10);
+  const bonus = rollBonus <= 5 ? 'Bonus Zopu' : '';
+
   const statCombo = Math.random() < 0.5 ? stat5 : stat6;
   return [equip[0], 'Orange', equip[1], stat1, stat2, stat4, stat3, statCombo, stat7, bonus];
 }
@@ -115,15 +125,16 @@ module.exports = {
 
     for (let i = 0; i < nombre; i++) {
       let data;
-      if (couleur === 'Blanc') data = blanc();
-      else if (couleur === 'Vert') data = vert();
-      else if (couleur === 'Bleu') data = bleu();
-      else if (couleur === 'Orange') data = orange();
+      if (couleur === 'Blanc') data = await blanc();
+      else if (couleur === 'Vert') data = await vert();
+      else if (couleur === 'Bleu') data = await bleu();
+      else if (couleur === 'Orange') data = await orange();
 
       Object.keys(resultat).forEach((key, idx) => {
         resultat[key].push(data[idx] || '');
       });
     }
+    console.log("resultat : ",resultat);
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filePath = path.join(__dirname, `./crystite_result_${timestamp}.xlsx`);
