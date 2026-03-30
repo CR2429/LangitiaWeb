@@ -17,7 +17,7 @@ module.exports = {
   d80: () => roll(1, 80),
 
   d100: async (interaction = null, count = 1) => {
-    const results = [];
+    /*const results = [];
     const userId = interaction?.user?.id;
 
     try {
@@ -104,7 +104,9 @@ module.exports = {
       console.error("❌ Erreur SQL lors du lancer ou de la mise à jour :", err);
     }
 
-    return results.map(r => r[1]);
+    return results.map(r => r[1]);*/
+    // Version simple sans biais ni logs
+    return roll(1, 100);
   }
 
 };

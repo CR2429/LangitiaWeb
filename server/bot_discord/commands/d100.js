@@ -20,13 +20,17 @@ function formatBoxedMessage(label, value) {
   ].join('\n');
 }
 
+function roll(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('d100')
     .setDescription('Lance un dé 100 et affiche un message stylé'),
 
   async execute(interaction) {
-    const result = await dice.d100(interaction);
+    const result = roll(1,100)//await dice.d100(interaction);
     let message;
 
     if (result === 1) {

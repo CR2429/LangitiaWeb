@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, GatewayIntentBits, Events } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, REST, Routes, Events} = require('discord.js');
 const { createStartupButton, setupButtonInteraction } = require('./start-button.js');
 const moment = require('moment-timezone');
 
@@ -24,15 +24,56 @@ const client = new Client({
   ]
 });
 client.commands = new Collection();
+const commandsArray = [];
 
-// Charger toutes les commandes
+// --- CHARGEMENT DYNAMIQUE DES COMMANDES ---
 const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-for (const file of commandFiles) {
-  const filePath = path.join(commandsPath, file);
-  const command = require(filePath);
-  client.commands.set(command.data.name, command);
+console.log(`� Recherche des commandes dans : ${commandsPath}`);
+
+if (fs.existsSync(commandsPath)) {
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+    console.log(`found ${commandFiles.length} fichiers .js :`, commandFiles);
+
+    for (const file of commandFiles) {
+        const filePath = path.join(commandsPath, file);
+        const command = require(filePath);
+
+        console.log(`--- Analyse de : ${file} ---`);
+        console.log(`   > Exportation détectée :`, Object.keys(command));
+
+        // Vérification que la commande possède les propriétés requises
+        if ('data' in command && 'execute' in command) {
+            client.commands.set(command.data.name, command);
+            commandsArray.push(command.data.toJSON());
+            console.log(`✅ Commande chargée : ${command.data.name}`);
+        } else {
+            console.log(`[AVERTISSEMENT] La commande à ${filePath} manque de "data" ou "execute".`);
+        }
+    }
+} else {
+    console.error("❌ Dossier 'commands' introuvable !");
+}
+
+// --- FONCTION DE DÉPLOIEMENT AUTOMATIQUE ---
+async function deployCommands() {
+    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN_DISCORD);
+    
+    try {
+        console.log(`� Début du déploiement de ${commandsArray.length} commandes...`);
+        
+        const guildIds = process.env.GUILD_IDS.split(',');
+        for (const guildId of guildIds) {
+            await rest.put(
+                Routes.applicationGuildCommands(process.env.BOT_ID, guildId.trim()),
+                { body: commandsArray }
+            );
+            console.log(`✅ Commandes enregistrées pour la guilde : ${guildId.trim()}`);
+        }
+    } catch (error) {
+        console.error("❌ Erreur lors du déploiement des commandes :");
+        console.error(error);
+    }
 }
 
 // Réagir à une interaction
@@ -61,8 +102,12 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 //start du bot
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
   console.log(`Connecté en tant que ${client.user.tag}`);
+
+  // Déploiement automatique au démarrage
+  await deployCommands();
+
   createStartupButton(client); 
 });
 setupButtonInteraction(client);
