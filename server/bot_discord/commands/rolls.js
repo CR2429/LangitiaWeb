@@ -38,37 +38,40 @@ module.exports = {
         await new Promise(res => setTimeout(res, 5000));
       }
 
-      let rolls = [];
-      if (nombreFaces === 100) {
-        rolls = await dice.d100(interaction, nombreDes);
-      } else {
-        rolls = Array.from({ length: nombreDes }, () => Math.floor(Math.random() * nombreFaces) + 1);
-      }
+      const rolls = Array.from({ length: nombreDes }, () => Math.floor(Math.random() * nombreFaces) + 1);
 
       const total = rolls.reduce((sum, val) => sum + val, 0);
       const message = `Jet de ${input} :\n=====\n${rolls.join(', ')}\n=====\nTotal : ${total}`;
 
       if (message.length <= 2000) {
-        await interaction.channel.send(message);
+        // Si on a déjà répondu avec le message des 5 secondes, on utilise followUp, sinon on reply
+        if (interaction.replied) {
+          await interaction.followUp(message);
+        } else {
+          await interaction.reply(message);
+        }
       } else {
-        // Génère la date pour le nom de fichier
+        // Génère le fichier texte si le message dépasse 2000 caractères
         const now = new Date();
         const timestamp = now.toISOString().replace(/[:]/g, '-').replace(/\..+/, '');
         const filename = `resultats_${timestamp}.txt`;
         const filepath = path.join(__dirname, filename);
 
-        // Écrit le fichier sur le disque
         fs.writeFileSync(filepath, message, 'utf-8');
-
-        // Prépare l'attachement pour Discord
         const file = new AttachmentBuilder(filepath);
 
-        await interaction.channel.send({
+        const payload = {
           content: `Résultat trop long pour être affiché dans Discord, voici le fichier :`,
           files: [file],
-        });
+        };
 
-        // Supprime le fichier après 15 secondes
+        if (interaction.replied) {
+          await interaction.followUp(payload);
+        } else {
+          await interaction.reply(payload);
+        }
+
+        // Nettoyage du fichier après 15 secondes
         setTimeout(() => {
           fs.unlink(filepath, err => {
             if (err) console.error(`❌ Erreur lors de la suppression de ${filename} :`, err);
@@ -79,7 +82,13 @@ module.exports = {
 
     } catch (err) {
       console.error("❌ Erreur lors de l'exécution de la commande /r :", err);
-      await interaction.channel.send(">~< j'ai crash...");
+      const errorResponse = ">~< j'ai crash...";
+      
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(errorResponse);
+      } else {
+        await interaction.reply(errorResponse);
+      }
     }
   }
 };
