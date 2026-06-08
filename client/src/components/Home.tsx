@@ -35,10 +35,6 @@ type WindowData = {
 };
 
 const Home = () => {
-  const [step, setStep] = useState<'boot' | 'interface'>(
-    localStorage.getItem('protocolApproved') === 'true' ? 'interface' : 'boot'
-  );
-
   const [localFS, setLocalFS] = useState<LocalFS>(() => loadLocalFS());
   const [windows, setWindows] = useState<WindowData[]>([]);
 
@@ -57,10 +53,8 @@ const Home = () => {
     };
   }, []);
 
-  // SYNC AUTO toutes les 10 secondes, uniquement si interface affichée
+  // SYNC AUTO toutes les 10 secondes
   useEffect(() => {
-    if (step !== 'interface') return;
-
     const interval = setInterval(async () => {
       try {
         const currentFS = loadLocalFS();
@@ -129,7 +123,7 @@ const Home = () => {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [step]);
+  }, []);
 
   // Ouverture d'une fenêtre dossier
   const openFolderWindow = (file: FileNode) => {
@@ -204,81 +198,57 @@ const Home = () => {
     }
   };
 
-  const handleApproveProtocol = () => {
-    localStorage.setItem('protocolApproved', 'true');
-    setStep('interface');
-  };
-
   const desktopFiles = listFilesAtPath(localFS, '/home');
 
   return (
-    <>
-      {step === 'boot' && (
-        <div className="main-interface">
-          <div className="boot-screen">
-            <h2>Bienvenue dans le système Cartage</h2>
-            <p className="boot-text">
-              En cliquant sur <strong>Connexion au système</strong>, vous reconnaissez avoir lu et accepté les{' '}
-              <a href="/protocoles_de_securite">Protocoles de Sécurité</a>.
-            </p>
-            <button className="boot-button" onClick={handleApproveProtocol}>
-              Connexion au système
-            </button>
+    <div className="main-interface">
+      <div className="desktop-grid">
+        {desktopFiles.map(f => (
+          <div
+            key={f.id}
+            className="desktop-icon"
+            onClick={() => openFolderWindow(f)}
+          >
+            <div className="icon-stack-large">
+              {getFileIcon(f.type, 'icon-back')}
+              {getFileIcon(f.type, 'icon-front')}
+            </div>
+            <span>{f.nom}</span>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {step === 'interface' && (
-        <div className="main-interface">
-          <div className="desktop-grid">
-            {desktopFiles.map(f => (
-              <div
-                key={f.id}
-                className="desktop-icon"
-                onClick={() => openFolderWindow(f)}
-              >
-                <div className="icon-stack-large">
-                  {getFileIcon(f.type, 'icon-back')}
-                  {getFileIcon(f.type, 'icon-front')}
-                </div>
-                <span>{f.nom}</span>
-              </div>
-            ))}
-          </div>
+      {windows.map(win => {
+        const title =
+          win.type === 'terminal'
+            ? win.title
+            : win.type === 'folder'
+              ? win.title
+              : `${win.title}.${win.type}`;
 
-          {windows.map(win => {
-            const title =
-              win.type === 'terminal'
-                ? win.title
-                : win.type === 'folder'
-                  ? win.title
-                  : `${win.title}.${win.type}`;
-
-            return (
-              <DraggableWindow
-                key={win.id}
-                id={win.id}
-                title={title}
-                type={win.type}
-                content={win.content}
-                x={win.x}
-                y={win.y}
-                z={win.z}
-                hidden={win.hidden}
-                onClose={closeWindow}
-                onFocus={bringToFront}
-              />
-            );
-          })}
-
-          <MenuBar
-            onOpenTerminal={openTerminal}
-            onOpenLogin={() => console.log('login soon')}
-            onOpenEditText={() => console.log('edit soon')}
+        return (
+          <DraggableWindow
+            key={win.id}
+            id={win.id}
+            title={title}
+            type={win.type}
+            content={win.content}
+            x={win.x}
+            y={win.y}
+            z={win.z}
+            hidden={win.hidden}
+            onClose={closeWindow}
+            onFocus={bringToFront}
           />
-        </div>
-      )}
-    </>
+        );
+      })}
+
+      <MenuBar
+        onOpenTerminal={openTerminal}
+        onOpenLogin={() => console.log('login soon')}
+        onOpenEditText={() => console.log('edit soon')}
+      />
+    </div>
   );
 };
 
