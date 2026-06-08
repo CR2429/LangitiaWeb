@@ -26,7 +26,10 @@
     "mysql2": "^3.14.1",
     "path": "^0.12.7",
     "react-bootstrap-icons": "^1.11.6",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.1"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@types/react": "^19.1.4",
