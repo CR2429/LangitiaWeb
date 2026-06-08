@@ -1,13 +1,14 @@
 import "./MenuBar.css";
-import { Terminal, PersonSquare, ShieldShaded, FolderSymlink } from "react-bootstrap-icons";
+import { Terminal, PersonSquare, ShieldShaded, FolderSymlink, Cpu } from "react-bootstrap-icons";
 
 interface MenuBarProps {
   onOpenTerminal: () => void;
   onOpenLogin: () => void;
   onOpenEditText: () => void;
+  onOpenElementHeart: () => void;
 }
 
-const MenuBar = ({ onOpenTerminal, onOpenLogin, onOpenEditText }: MenuBarProps) => {
+const MenuBar = ({ onOpenTerminal, onOpenLogin, onOpenEditText, onOpenElementHeart }: MenuBarProps) => {
   return (
     <div className="menu-bar">
       <button
@@ -37,10 +38,16 @@ const MenuBar = ({ onOpenTerminal, onOpenLogin, onOpenEditText }: MenuBarProps) 
           <ShieldShaded className="icon-front" />
         </span>
       </button>
-      <button onClick={onOpenEditText}>
+      <button onClick={onOpenEditText} title="Explorateur">
         <span className="icon-stack">
           <FolderSymlink className="icon-back" />
           <FolderSymlink className="icon-front" />
+        </span>
+      </button>
+      <button onClick={onOpenElementHeart} title="Cœur Élémentaire">
+        <span className="icon-stack">
+          <Cpu className="icon-back" />
+          <Cpu className="icon-front" />
         </span>
       </button>
     </div>

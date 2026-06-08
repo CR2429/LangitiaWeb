@@ -146,16 +146,15 @@ const Home = () => {
     ]);
   };
 
-  // Terminal
-  const openTerminal = () => {
+  const openAppWindow = (title: string, type: string) => {
     const maxZ = windows.length ? Math.max(...windows.map(w => w.z)) + 1 : 1;
 
     setWindows(prev => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        title: 'Terminal',
-        type: 'terminal',
+        title,
+        type,
         content: '',
         updatedAt: new Date().toISOString(),
         x: window.innerWidth / 2 - 300 + Math.random() * 100 - 50,
@@ -166,6 +165,10 @@ const Home = () => {
       }
     ]);
   };
+
+  // Terminal
+  const openTerminal = () => openAppWindow('Terminal', 'terminal');
+  const openElementHeart = () => openAppWindow('Cœur Élémentaire', 'element-heart');
 
   const closeWindow = (id: string) => {
     setWindows(prev => {
@@ -220,7 +223,7 @@ const Home = () => {
 
       {windows.map(win => {
         const title =
-          win.type === 'terminal'
+          win.type === 'terminal' || win.type === 'element-heart'
             ? win.title
             : win.type === 'folder'
               ? win.title
@@ -247,6 +250,7 @@ const Home = () => {
         onOpenTerminal={openTerminal}
         onOpenLogin={() => console.log('login soon')}
         onOpenEditText={() => console.log('edit soon')}
+        onOpenElementHeart={openElementHeart}
       />
     </div>
   );

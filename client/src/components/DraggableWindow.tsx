@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import './DraggableWindow.css';
 import { marked } from 'marked';
 import Terminal from './Terminal';
+import ElementHeart from './ElementHeart/ElementHeart';
 
 type Props = {
   id: string;
@@ -85,6 +86,7 @@ const DraggableWindow = ({ id, title, type, content, x, y, z, hidden, onClose, o
   const renderContent = () => {
     switch (type) {
       case 'terminal': return <Terminal />;
+      case 'element-heart': return <ElementHeart />;
       case 'text/plain':
       case 'file-text': return <pre className="file-text-content">{content}</pre>;
       case 'markdown':
