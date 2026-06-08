@@ -56,3 +56,9 @@ env/
 # password
 /server/SQL_password.txt
 /server/user.json
+
+# Lore source privé 
+/lore-source/
+
+# docs
+docs
