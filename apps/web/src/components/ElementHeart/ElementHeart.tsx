@@ -1,203 +1,343 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './ElementHeart.css';
-import AstralCubeIcon from './AstralCubeIcon';
+import { MouseLeftClickIcon, MouseRightClickIcon } from './ClickHintIcons';
+import PiecePreview from './PiecePreview';
 import {
   DEFAULT_CORRUPTED,
-  DEFAULT_INVENTORY,
-  ELEMENTS,
+  ELEMENT_META,
   GRID_SIZE,
+  SHAPE_TEMPLATES,
+  anchorFromHover,
+  canPlacePiece,
+  computeActiveTally,
   coordKey,
-  getShapeCells,
-  isInBounds,
+  createDefaultInventory,
+  getPieceCells,
+  pieceTouchesCorruption,
 } from '../../utils/elementHeart/elements';
-import type { ElementId, GridCoord, PlacedPiece } from '../../utils/elementHeart/types';
+import type { GridCoord, InventoryPiece, PlacedPiece } from '../../utils/elementHeart/types';
 
-function countPlaced(placed: PlacedPiece[], elementId: ElementId): number {
-  return placed.filter(p => p.elementId === elementId).length;
-}
+type DragState = {
+  source: 'inventory' | 'grid';
+  pieceId: string;
+  templateId: InventoryPiece['templateId'];
+  shapeIndex: number;
+};
 
-function remainingInInventory(
-  inventory: Record<string, number>,
-  placed: PlacedPiece[],
-  elementId: ElementId
-): number {
-  const total = inventory[elementId] ?? 0;
-  return total - countPlaced(placed, elementId);
+function findCellFromPoint(x: number, y: number): GridCoord | null {
+  const el = document.elementFromPoint(x, y)?.closest('[data-eh-row][data-eh-col]');
+  if (!el) return null;
+  const row = el.getAttribute('data-eh-row');
+  const col = el.getAttribute('data-eh-col');
+  if (row === null || col === null) return null;
+  return { row: Number(row), col: Number(col) };
 }
 
 const ElementHeart = () => {
-  const [inventory] = useState<Record<string, number>>(() => ({ ...DEFAULT_INVENTORY }));
-  const [selectedElement, setSelectedElement] = useState<ElementId | null>('astral');
-  const [shapeIndex] = useState(0);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<DragState | null>(null);
+  const pointerPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const [inventory, setInventory] = useState<InventoryPiece[]>(() => createDefaultInventory());
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);
-  const [hoverCell, setHoverCell] = useState<GridCoord | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [hoverAnchor, setHoverAnchor] = useState<GridCoord | null>(null);
+  const [dragging, setDragging] = useState<DragState | null>(null);
+  const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null);
 
-  const astralRemaining = remainingInInventory(inventory, placed, 'astral');
+  const corrupted = useMemo(() => new Set(DEFAULT_CORRUPTED.map(coordKey)), []);
 
-  const corrupted = useMemo(
-    () => new Set(DEFAULT_CORRUPTED.map(coordKey)),
-    []
+  const visiblePlaced = useMemo(() => {
+    if (dragging?.source === 'grid') {
+      return placed.filter(p => p.id !== dragging.pieceId);
+    }
+    return placed;
+  }, [placed, dragging]);
+
+  const activeTally = useMemo(
+    () => computeActiveTally(placed, corrupted),
+    [placed, corrupted]
   );
 
   const occupiedCells = useMemo(() => {
-    const set = new Set<string>();
-    for (const piece of placed) {
-      for (const cell of getShapeCells(piece.elementId, piece.shapeIndex, piece.anchor)) {
-        set.add(coordKey(cell));
+    const map = new Map<string, PlacedPiece>();
+    for (const piece of visiblePlaced) {
+      for (const cell of getPieceCells(piece.templateId, piece.shapeIndex, piece.anchor)) {
+        map.set(coordKey(cell), piece);
       }
     }
-    return set;
-  }, [placed]);
+    return map;
+  }, [visiblePlaced]);
 
   const previewCells = useMemo(() => {
-    if (!selectedElement || !hoverCell || remainingInInventory(inventory, placed, selectedElement) <= 0) {
-      return new Set<string>();
-    }
-    const cells = getShapeCells(selectedElement, shapeIndex, hoverCell);
-    return new Set(cells.map(coordKey));
-  }, [selectedElement, shapeIndex, hoverCell, inventory, placed]);
+    if (!dragging || !hoverAnchor) return new Set<string>();
+    return new Set(
+      getPieceCells(dragging.templateId, dragging.shapeIndex, hoverAnchor).map(coordKey)
+    );
+  }, [dragging, hoverAnchor]);
 
-  const canPlaceAt = useCallback(
-    (anchor: GridCoord): boolean => {
-      if (!selectedElement) return false;
-      if (remainingInInventory(inventory, placed, selectedElement) <= 0) return false;
+  const previewValid = useMemo(() => {
+    if (!dragging || !hoverAnchor) return false;
+    return canPlacePiece(
+      dragging.templateId,
+      dragging.shapeIndex,
+      hoverAnchor,
+      visiblePlaced,
+      GRID_SIZE
+    );
+  }, [dragging, hoverAnchor, visiblePlaced]);
 
-      const cells = getShapeCells(selectedElement, shapeIndex, anchor);
-      if (cells.length === 0) return false;
+  const updateHoverFromPointer = useCallback((clientX: number, clientY: number) => {
+    const d = draggingRef.current;
+    if (!d) return;
+    const hover = findCellFromPoint(clientX, clientY);
+    setHoverAnchor(
+      hover ? anchorFromHover(hover, d.templateId, d.shapeIndex) : null
+    );
+  }, []);
 
-      for (const cell of cells) {
-        if (!isInBounds(cell.row, cell.col, GRID_SIZE)) return false;
-        if (corrupted.has(coordKey(cell))) return false;
-        if (occupiedCells.has(coordKey(cell))) return false;
-      }
-      return true;
+  const startDrag = useCallback(
+    (
+      source: 'inventory' | 'grid',
+      piece: { id: string; templateId: InventoryPiece['templateId']; shapeIndex: number },
+      x: number,
+      y: number
+    ) => {
+      const next: DragState = {
+        source,
+        pieceId: piece.id,
+        templateId: piece.templateId,
+        shapeIndex: piece.shapeIndex,
+      };
+      draggingRef.current = next;
+      setDragging(next);
+      pointerPosRef.current = { x, y };
+      setPointerPos({ x, y });
+      updateHoverFromPointer(x, y);
     },
-    [selectedElement, shapeIndex, corrupted, occupiedCells, inventory, placed]
+    [updateHoverFromPointer]
   );
 
-  const previewValid = hoverCell ? canPlaceAt(hoverCell) : false;
+  const endDrag = useCallback(() => {
+    draggingRef.current = null;
+    pointerPosRef.current = null;
+    setDragging(null);
+    setHoverAnchor(null);
+    setPointerPos(null);
+  }, []);
 
-  const handleCellClick = (row: number, col: number) => {
-    const anchor = { row, col };
+  const placeFromInventory = useCallback(
+    (inventoryPieceId: string, anchor: GridCoord, shapeIndex: number) => {
+      const item = inventory.find(p => p.id === inventoryPieceId);
+      if (!item) return false;
+      if (!canPlacePiece(item.templateId, shapeIndex, anchor, placed, GRID_SIZE)) return false;
 
-    const existing = placed.find(p =>
-      getShapeCells(p.elementId, p.shapeIndex, p.anchor).some(
-        c => c.row === row && c.col === col
-      )
-    );
-    if (existing) {
-      setPlaced(prev => prev.filter(p => p.id !== existing.id));
-      const name = ELEMENTS[existing.elementId].name;
-      setMessage(`${name} retiré — retour à l'inventaire.`);
-      return;
-    }
+      setPlaced(prev => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          inventoryPieceId: item.id,
+          templateId: item.templateId,
+          anchor,
+          shapeIndex,
+        },
+      ]);
+      setInventory(prev => prev.filter(p => p.id !== item.id));
+      return true;
+    },
+    [inventory, placed]
+  );
 
-    if (!selectedElement) {
-      setMessage('Sélectionnez un élément dans l\'inventaire.');
-      return;
-    }
+  const moveOnGrid = useCallback(
+    (placedId: string, anchor: GridCoord, shapeIndex: number) => {
+      const piece = placed.find(p => p.id === placedId);
+      if (!piece) return false;
+      const others = placed.filter(p => p.id !== placedId);
+      if (!canPlacePiece(piece.templateId, shapeIndex, anchor, others, GRID_SIZE)) return false;
+      setPlaced(prev =>
+        prev.map(p => (p.id === placedId ? { ...p, anchor, shapeIndex } : p))
+      );
+      return true;
+    },
+    [placed]
+  );
 
-    if (remainingInInventory(inventory, placed, selectedElement) <= 0) {
-      setMessage('Plus de cubes disponibles dans l\'inventaire.');
-      return;
-    }
-
-    if (!canPlaceAt(anchor)) {
-      setMessage('Placement impossible — zone corrompue, hors limites ou occupée.');
-      return;
-    }
-
-    setPlaced(prev => [
+  const returnToInventory = useCallback((placedId: string, shapeIndex?: number) => {
+    const piece = placed.find(p => p.id === placedId);
+    if (!piece) return;
+    const idx = shapeIndex ?? piece.shapeIndex;
+    setPlaced(prev => prev.filter(p => p.id !== placedId));
+    setInventory(prev => [
       ...prev,
-      {
-        id: crypto.randomUUID(),
-        elementId: selectedElement,
-        anchor,
-        shapeIndex,
-      },
+      { id: piece.inventoryPieceId, templateId: piece.templateId, shapeIndex: idx },
     ]);
-    const left = remainingInInventory(inventory, placed, selectedElement) - 1;
-    setMessage(`${ELEMENTS[selectedElement].name} ancré. Reste : ${left}.`);
+  }, [placed]);
+
+  const rotateDraggingPiece = useCallback(
+    (clientX: number, clientY: number) => {
+      const prev = draggingRef.current;
+      if (!prev) return;
+
+      const max = SHAPE_TEMPLATES[prev.templateId].rotations.length;
+      const shapeIndex = (prev.shapeIndex + 1) % max;
+      const next = { ...prev, shapeIndex };
+
+      draggingRef.current = next;
+      setDragging(next);
+
+      if (prev.source === 'inventory') {
+        setInventory(inv =>
+          inv.map(p => (p.id === prev.pieceId ? { ...p, shapeIndex } : p))
+        );
+      }
+
+      const px = clientX || pointerPosRef.current?.x || 0;
+      const py = clientY || pointerPosRef.current?.y || 0;
+      updateHoverFromPointer(px, py);
+    },
+    [updateHoverFromPointer]
+  );
+
+  const rotateInventoryPiece = useCallback((pieceId: string) => {
+    setInventory(prev =>
+      prev.map(p => {
+        if (p.id !== pieceId) return p;
+        const max = SHAPE_TEMPLATES[p.templateId].rotations.length;
+        return { ...p, shapeIndex: (p.shapeIndex + 1) % max };
+      })
+    );
+  }, []);
+
+  const rotateGridPiece = useCallback((piece: PlacedPiece) => {
+    const nextIndex = (piece.shapeIndex + 1) % SHAPE_TEMPLATES[piece.templateId].rotations.length;
+    const others = placed.filter(p => p.id !== piece.id);
+    if (!canPlacePiece(piece.templateId, nextIndex, piece.anchor, others, GRID_SIZE)) return;
+    setPlaced(prev => prev.map(p => (p.id === piece.id ? { ...p, shapeIndex: nextIndex } : p)));
+  }, [placed]);
+
+  const clearHeart = () => {
+    const returned: InventoryPiece[] = placed.map(p => ({
+      id: p.inventoryPieceId,
+      templateId: p.templateId,
+      shapeIndex: p.shapeIndex,
+    }));
+    setInventory(prev => [...prev, ...returned]);
+    setPlaced([]);
   };
+
+  const dragActive = dragging !== null;
+
+  useEffect(() => {
+    if (!dragActive) return;
+
+    const onMove = (e: PointerEvent) => {
+      pointerPosRef.current = { x: e.clientX, y: e.clientY };
+      setPointerPos({ x: e.clientX, y: e.clientY });
+      updateHoverFromPointer(e.clientX, e.clientY);
+    };
+
+    const onContextMenu = (e: MouseEvent) => {
+      if (!draggingRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      rotateDraggingPiece(e.clientX, e.clientY);
+    };
+
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      const d = draggingRef.current;
+      if (!d) return;
+
+      const hover = findCellFromPoint(e.clientX, e.clientY);
+
+      if (hover) {
+        const anchor = anchorFromHover(hover, d.templateId, d.shapeIndex);
+        const placedOk =
+          d.source === 'inventory'
+            ? placeFromInventory(d.pieceId, anchor, d.shapeIndex)
+            : moveOnGrid(d.pieceId, anchor, d.shapeIndex);
+
+        if (!placedOk && d.source === 'grid') {
+          returnToInventory(d.pieceId, d.shapeIndex);
+        }
+      } else if (d.source === 'grid') {
+        returnToInventory(d.pieceId, d.shapeIndex);
+      }
+
+      endDrag();
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('contextmenu', onContextMenu, true);
+
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('contextmenu', onContextMenu, true);
+    };
+  }, [
+    dragActive,
+    endDrag,
+    moveOnGrid,
+    placeFromInventory,
+    returnToInventory,
+    rotateDraggingPiece,
+    updateHoverFromPointer,
+  ]);
 
   const getCellClass = (row: number, col: number): string => {
     const key = coordKey({ row, col });
     const classes = ['eh-cell'];
+    if (corrupted.has(key)) classes.push('eh-cell--corrupted');
 
-    if (corrupted.has(key)) {
-      classes.push('eh-cell--corrupted');
-      return classes.join(' ');
-    }
-
-    if (occupiedCells.has(key)) {
-      const piece = placed.find(p =>
-        getShapeCells(p.elementId, p.shapeIndex, p.anchor).some(
-          c => c.row === row && c.col === col
-        )
-      );
-      if (piece) classes.push(`eh-cell--filled eh-cell--${piece.elementId}`);
-      return classes.join(' ');
-    }
-
-    if (previewCells.has(key)) {
+    const occupant = occupiedCells.get(key);
+    if (occupant) {
+      const elementId = SHAPE_TEMPLATES[occupant.templateId].elementId;
+      const incompatible = pieceTouchesCorruption(occupant, corrupted);
+      classes.push(`eh-cell--filled eh-cell--${elementId}`);
+      if (incompatible) classes.push('eh-cell--incompatible');
+    } else if (previewCells.has(key)) {
       classes.push(previewValid ? 'eh-cell--preview-valid' : 'eh-cell--preview-invalid');
     }
 
     return classes.join(' ');
   };
 
+  const handleDragStart = (
+    e: React.PointerEvent,
+    source: 'inventory' | 'grid',
+    piece: { id: string; templateId: InventoryPiece['templateId']; shapeIndex: number }
+  ) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    startDrag(source, piece, e.clientX, e.clientY);
+  };
+
+  const handleRotate = (e: React.PointerEvent, action: () => void) => {
+    if (draggingRef.current) return;
+    if (e.button !== 2) return;
+    e.preventDefault();
+    action();
+  };
+
+  const activeEntries = Object.entries(activeTally).filter(([, v]) => (v ?? 0) > 0);
+
   return (
-    <div className="element-heart">
-      <header className="eh-header">
-        <AstralCubeIcon size={36} />
-        <div>
-          <h2>Cœur Élémentaire</h2>
-          <p className="eh-subtitle">Noyau informatique — matrice 5×5</p>
-        </div>
-      </header>
-
+    <div className="element-heart" ref={boardRef} onContextMenu={e => e.preventDefault()}>
       <div className="eh-layout">
-        <aside className="eh-inventory">
-          <h3>Inventaire</h3>
-          <button
-            type="button"
-            className={`eh-piece-btn${selectedElement === 'astral' ? ' eh-piece-btn--selected' : ''}${astralRemaining <= 0 ? ' eh-piece-btn--empty' : ''}`}
-            onClick={() => {
-              if (astralRemaining <= 0) {
-                setMessage('Aucun Cube Astral en stock.');
-                return;
-              }
-              setSelectedElement('astral');
-              setMessage('Cube Astral sélectionné.');
-            }}
-            disabled={astralRemaining <= 0 && selectedElement !== 'astral'}
-          >
-            <AstralCubeIcon size={40} glowing={astralRemaining > 0} />
-            <span>Cube Astral</span>
-            <span className="eh-piece-count">
-              {astralRemaining} / {inventory.astral ?? 0}
-            </span>
-          </button>
+        <section className="eh-board" aria-label="Matrice du cœur">
+          {activeEntries.length > 0 && (
+            <div className="eh-active-bar" aria-live="polite">
+              {activeEntries.map(([elementId, value]) => (
+                <span key={elementId} className={`eh-active-chip eh-active-chip--${elementId}`}>
+                  {ELEMENT_META[elementId as keyof typeof ELEMENT_META].name} · {value}
+                </span>
+              ))}
+            </div>
+          )}
 
-          <div className="eh-controls">
-            <button
-              type="button"
-              onClick={() => {
-                setPlaced([]);
-                setMessage('Cœur réinitialisé — tous les cubes sont revenus à l\'inventaire.');
-              }}
-            >
-              Effacer
-            </button>
-          </div>
-
-          <p className="eh-hint">
-            Cliquez sur le cœur pour ancrer un cube. Cliquez sur un cube posé pour le récupérer.
-          </p>
-        </aside>
-
-        <main className="eh-core">
           <div className="eh-grid-wrap">
             <div
               className="eh-grid"
@@ -207,35 +347,100 @@ const ElementHeart = () => {
               }}
             >
               {Array.from({ length: GRID_SIZE }, (_, row) =>
-                Array.from({ length: GRID_SIZE }, (_, col) => (
-                  <button
-                    key={`${row}-${col}`}
-                    type="button"
-                    className={getCellClass(row, col)}
-                    onClick={() => handleCellClick(row, col)}
-                    onMouseEnter={() => setHoverCell({ row, col })}
-                    onMouseLeave={() => setHoverCell(null)}
-                    disabled={corrupted.has(coordKey({ row, col }))}
-                    aria-label={
-                      corrupted.has(coordKey({ row, col }))
-                        ? `Cellule ${row + 1},${col + 1} — corrompue`
-                        : `Cellule ${row + 1},${col + 1}`
-                    }
-                  />
-                ))
+                Array.from({ length: GRID_SIZE }, (_, col) => {
+                  const key = coordKey({ row, col });
+                  const occupant = occupiedCells.get(key);
+
+                  return (
+                    <div
+                      key={key}
+                      className={getCellClass(row, col)}
+                      data-eh-row={row}
+                      data-eh-col={col}
+                      onPointerDown={e => {
+                        if (e.button === 0 && occupant) {
+                          handleDragStart(e, 'grid', occupant);
+                        } else if (e.button === 2 && occupant) {
+                          handleRotate(e, () => rotateGridPiece(occupant));
+                        }
+                      }}
+                      onDoubleClick={() => {
+                        if (occupant) returnToInventory(occupant.id);
+                      }}
+                    />
+                  );
+                })
               )}
             </div>
           </div>
+        </section>
 
-          <div className="eh-legend">
-            <span className="eh-legend-item eh-legend-item--empty">Libre</span>
-            <span className="eh-legend-item eh-legend-item--corrupted">Corrompue</span>
-            <span className="eh-legend-item eh-legend-item--astral">Astral</span>
+        <aside className="eh-inventory" aria-label="Inventaire élémentaire">
+          <div className="eh-inventory-panel">
+            <div className="eh-inventory-grid">
+              {inventory.map(piece => {
+                const elementId = SHAPE_TEMPLATES[piece.templateId].elementId;
+                const isDragging =
+                  dragging?.source === 'inventory' && dragging.pieceId === piece.id;
+
+                return (
+                  <div
+                    key={piece.id}
+                    className={`eh-slot${isDragging ? ' eh-slot--dragging' : ''}`}
+                    onPointerDown={e => {
+                      if (e.button === 0) handleDragStart(e, 'inventory', piece);
+                      if (e.button === 2) handleRotate(e, () => rotateInventoryPiece(piece.id));
+                    }}
+                  >
+                    <div className="eh-slot-frame">
+                      <span className="eh-corner eh-corner--tl" />
+                      <span className="eh-corner eh-corner--tr" />
+                      <span className="eh-corner eh-corner--bl" />
+                      <span className="eh-corner eh-corner--br" />
+                      <PiecePreview
+                        templateId={piece.templateId}
+                        shapeIndex={piece.shapeIndex}
+                        size="slot"
+                        elementClass={elementId}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="eh-controls-hint">
+              <div className="eh-hint-row">
+                <MouseLeftClickIcon size={16} />
+                <span>Déposer</span>
+              </div>
+              <div className="eh-hint-row">
+                <MouseRightClickIcon size={16} />
+                <span>Pivotage</span>
+              </div>
+            </div>
+
+            <button type="button" className="eh-clear-btn" onClick={clearHeart}>
+              Effacer
+            </button>
           </div>
-        </main>
+        </aside>
       </div>
 
-      {message && <p className="eh-message">{message}</p>}
+      {dragging && pointerPos && (
+        <div
+          className="eh-drag-ghost"
+          style={{ left: pointerPos.x, top: pointerPos.y }}
+          aria-hidden
+        >
+          <PiecePreview
+            templateId={dragging.templateId}
+            shapeIndex={dragging.shapeIndex}
+            size="ghost"
+            elementClass={SHAPE_TEMPLATES[dragging.templateId].elementId}
+          />
+        </div>
+      )}
     </div>
   );
 };

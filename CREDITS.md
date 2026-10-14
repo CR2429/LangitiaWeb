@@ -20,7 +20,7 @@ L’univers narratif, les idées créatives, les choix de design immersif et les
 
 ## Utilisation de l’intelligence artificielle
 
-Ce projet a été développé avec l’aide d’outils d’intelligence artificielle (notamment **Cursor** et des modèles de langage associés), **uniquement comme accélérateur de développement**.
+Ce projet a été développé avec l’aide d’outils d’intelligence artificielle, **uniquement comme accélérateur de développement**.
 
 | Point | Précision |
 |-------|-----------|
@@ -40,9 +40,10 @@ Ressources dont la structure ou le boilerplate ont servi de point de départ (li
 
 | Ressource | Licence | Usage dans le projet | Lien |
 |-----------|---------|----------------------|------|
-| **Vite** — template React + TypeScript | MIT | Structure initiale du client (`client/`), configuration Vite, ESLint de base | [vitejs/vite](https://github.com/vitejs/vite) |
+| **Vite** — template React + TypeScript | MIT | Structure initiale du client (`apps/web/`), configuration Vite, ESLint de base | [vitejs/vite](https://github.com/vitejs/vite) |
 | **React** | MIT | Framework UI du client | [facebook/react](https://github.com/facebook/react) |
 | **react-bootstrap-icons** (icônes dérivées de Bootstrap Icons) | MIT | Icônes dans l’interface CartageOS | [ismamz/react-bootstrap-icons](https://github.com/ismamz/react-bootstrap-icons) |
+| **Phosphor Icons** (`mouse-left-click`, `mouse-right-click`) | MIT | Aide visuelle Cœur Élémentaire (pivoter / déposer) | [phosphor-icons/core](https://github.com/phosphor-icons/core) |
 
 ---
 
