@@ -40,25 +40,15 @@ public/build/
 *.tmp
 .DS_Store
 
-# React/Vite
-client/node_modules/
-client/.parcel-cache/
-client/dist/
-client/.vite/
-
-# Python (si ton crawler est dedans)
-*.pyc
-__pycache__/
-venv/
-env/
-.Python
+# React/Vite (apps/web)
+apps/web/.vite/
 
 # password
-/server/SQL_password.txt
-/server/user.json
+/apps/api/SQL_password.txt
+/apps/api/user.json
 
-# Lore source privé 
+# Lore source privé (repo git séparé, lore-langitia)
 /lore-source/
 
-# docs
-docs
+# docs locales (plans, notes)
+/docs/

@@ -1,39 +1,17 @@
 {
-  "name": "nodejs",
+  "name": "langitia",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
+  "description": "Langitia.com : site CartageOS (apps/web + apps/api) et bot Discord (apps/bot)",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd server && node server.js",
-    "client": "cd client && npm run dev",
-    "test": "node --test server/tests/*.test.js"
+    "install:all": "npm install && npm install --prefix apps/web && npm install --prefix apps/api && npm install --prefix apps/bot",
+    "dev": "concurrently --names api,web \"npm run dev --prefix apps/api\" \"npm run dev --prefix apps/web\"",
+    "dev:bot": "npm start --prefix apps/bot",
+    "build": "npm run build --prefix apps/web",
+    "test": "npm test --prefix apps/api"
   },
-  "keywords": [],
-  "author": "",
   "license": "MIT",
-  "dependencies": {
-    "bcryptjs": "^3.0.2",
-    "cors": "^2.8.5",
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.5.0",
-    "exceljs": "^4.4.0",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.5.0",
-    "helmet": "^8.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "luxon": "^3.6.1",
-    "marked": "^15.0.12",
-    "moment-timezone": "^0.6.0",
-    "mysql2": "^3.14.1",
-    "path": "^0.12.7",
-    "react-bootstrap-icons": "^1.11.6",
-    "uuid": "^11.1.1"
-  },
-  "overrides": {
-    "uuid": "^11.1.1"
-  },
   "devDependencies": {
-    "@types/react": "^19.1.4",
     "concurrently": "^7.0.0"
   },
   "repository": {
@@ -43,6 +21,5 @@
   "bugs": {
     "url": "https://github.com/CR2429/LangitiaWeb/issues"
   },
-  "homepage": "https://github.com/CR2429/LangitiaWeb#readme",
-  "description": ""
+  "homepage": "https://github.com/CR2429/LangitiaWeb#readme"
 }

@@ -1,5 +1,4 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
-
+// Le .env est chargé par server.js (apps/api/.env)
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({

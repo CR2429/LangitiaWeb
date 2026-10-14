@@ -1,0 +1,21 @@
+{
+  "name": "langitia-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bot Discord de JDR Langitia (dés, stats, crystite...)",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.5.0",
+    "exceljs": "^4.4.0",
+    "moment-timezone": "^0.6.0",
+    "mysql2": "^3.14.1"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

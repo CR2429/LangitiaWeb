@@ -1,4 +1,5 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+// Le .env de l'API est dans son propre dossier : apps/api/.env
+require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 
 // Vérifie que toutes les variables obligatoires sont dans le .env.
 // Sans elles, le serveur serait vulnérable ou planterait plus tard : on arrête tout de suite.
@@ -49,7 +50,7 @@ app.use('/api', raspberryRoutes);
 app.use('/api/sync', syncRoutes);
 
 // Sert les fichiers React avec gestion du cache intelligente
-app.use(express.static(path.join(__dirname, '../client/dist'), {
+app.use(express.static(path.join(__dirname, '../web/dist'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
       // On ne met pas index.html en cache fort
@@ -63,7 +64,7 @@ app.use(express.static(path.join(__dirname, '../client/dist'), {
 
 // Redirige tout le reste vers index.html (React Router)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'), {
+  res.sendFile(path.join(__dirname, '../web/dist/index.html'), {
     headers: {
       'Cache-Control': 'no-cache'
     }

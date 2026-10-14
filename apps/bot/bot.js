@@ -4,7 +4,8 @@ const { Client, Collection, GatewayIntentBits, REST, Routes, Events} = require('
 const { createStartupButton, setupButtonInteraction } = require('./start-button.js');
 const moment = require('moment-timezone');
 
-const envPath = __dirname + '/../../.env';
+// Le .env du bot est dans son propre dossier : apps/bot/.env
+const envPath = path.join(__dirname, '.env');
 require('dotenv').config({ path: envPath });
 
 // On vérifie seulement que le .env existe.
