@@ -1,25 +1,32 @@
 {
-  "name": "langitia",
-  "version": "1.0.0",
+  "name": "client",
   "private": true,
-  "description": "Langitia.com : site CartageOS (apps/web + apps/api) et bot Discord (apps/bot)",
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "install:all": "npm install && npm install --prefix apps/web && npm install --prefix apps/api && npm install --prefix apps/bot",
-    "dev": "concurrently --names api,web \"npm run dev --prefix apps/api\" \"npm run dev --prefix apps/web\"",
-    "dev:bot": "npm start --prefix apps/bot",
-    "build": "npm run build --prefix apps/web",
-    "test": "npm test --prefix apps/api"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "license": "MIT",
+  "dependencies": {
+    "marked": "^15.0.12",
+    "react": "^19.0.0",
+    "react-bootstrap-icons": "^1.11.5",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.4.0"
+  },
   "devDependencies": {
-    "concurrently": "^7.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/CR2429/LangitiaWeb.git"
-  },
-  "bugs": {
-    "url": "https://github.com/CR2429/LangitiaWeb/issues"
-  },
-  "homepage": "https://github.com/CR2429/LangitiaWeb#readme"
+    "@eslint/js": "^9.21.0",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react-swc": "^3.8.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.2.0"
+  }
 }

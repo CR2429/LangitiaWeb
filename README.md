@@ -1,36 +1,54 @@
-# Langitia.com
+# React + TypeScript + Vite
 
-Ce dépôt contient **3 applications indépendantes**. Chacune a son propre `package.json`, son propre `node_modules` et son propre `.env`.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-| Dossier | Quoi | Lancer |
-|---|---|---|
-| `apps/web` | Le site CartageOS (React + TypeScript + Vite) : ce que voit le visiteur | `npm run dev` (avec l'API) |
-| `apps/api` | Le serveur du site (Express + MySQL) : sert `apps/web/dist` et les routes `/api` | `npm run dev` (avec le site) |
-| `apps/bot` | Le bot Discord de JDR (dés, stats, crystite...). **Aucun lien avec le site**, à part la même base MySQL | `npm run dev:bot` |
+Currently, two official plugins are available:
 
-## Première installation
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-```bash
-npm run install:all
-cp apps/api/.env.example apps/api/.env   # puis remplir les vraies valeurs
-cp apps/bot/.env.example apps/bot/.env   # puis remplir les vraies valeurs
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default tseslint.config({
+  extends: [
+    // Remove ...tseslint.configs.recommended and replace with this
+    ...tseslint.configs.recommendedTypeChecked,
+    // Alternatively, use this for stricter rules
+    ...tseslint.configs.strictTypeChecked,
+    // Optionally, add this for stylistic rules
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
 ```
 
-## Commandes (depuis la racine)
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-| Commande | Effet |
-|---|---|
-| `npm run dev` | Lance l'API (port 8080) et le site (port 5173) en même temps |
-| `npm run dev:bot` | Lance le bot Discord |
-| `npm run build` | Construit le site dans `apps/web/dist` |
-| `npm test` | Lance les tests de l'API |
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-> Attention : pour l'instant, l'API et le bot se connectent à la **base de prod** (`langitia.com`), même en local. Au démarrage, l'API recrée la table `users` à partir de `USER_JSON`.
-
-## Déploiement
-
-Sur le serveur : `./start.sh`. Le script fait un `git reset --hard origin/main`, construit le site, puis lance 2 processus PM2 : `langitia-server` (site) et `langitia-bot` (bot).
-
-## Le lore
-
-Le lore privé est dans `lore-source/`, un dépôt git séparé et privé. Il n'est jamais commité ici.
+export default tseslint.config({
+  plugins: {
+    // Add the react-x and react-dom plugins
+    'react-x': reactX,
+    'react-dom': reactDom,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended typescript rules
+    ...reactX.configs['recommended-typescript'].rules,
+    ...reactDom.configs.recommended.rules,
+  },
+})
+```
