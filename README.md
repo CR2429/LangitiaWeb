@@ -1,54 +1,35 @@
-# React + TypeScript + Vite
+# LangitiaWeb
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Le site [langitia.com](https://langitia.com), fait avec **Astro** (pages publiques) et **React** (bureau CartageOS).
 
-Currently, two official plugins are available:
+Ce projet est déployé par le dépôt `VPS` (voir son `start.sh`). Le site construit (`dist/`) est servi par le serveur `langitia-api`, placé à côté (`../api`).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Pages
 
-## Expanding the ESLint configuration
+| Adresse | Fichier | Rôle |
+|---|---|---|
+| `/` | `src/pages/index.astro` | Accueil : présentation de Langitia (la page que Google indexe en priorité) |
+| `/cartage/` | `src/pages/cartage.astro` | Le bureau CartageOS (composant React `src/components/Home.tsx`) |
+| `/protocoles_de_securite/` | `src/pages/protocoles_de_securite.astro` | Protocoles de sécurité (texte lu dans `public/protocoles_de_securite/`) |
+| page d'erreur | `src/pages/404.astro` | Fichier introuvable |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Toutes les pages utilisent le gabarit `src/layouts/BaseLayout.astro`, qui contient le titre, la description et les balises pour Google et les partages.
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Ajouter une page publique
+
+1. Créer `src/pages/ma-page.astro` (copier `404.astro` comme modèle).
+2. Donner un `title` et une `description` à `BaseLayout`.
+3. Ajouter l'adresse dans `public/sitemap.xml`.
+
+> Règle du site à énigmes : aucun secret ni solution dans les pages ou dans le code React. Tout ce qui est caché reste sur le serveur.
+
+## Commandes
+
+```bash
+npm install
+npm run dev       # http://localhost:4321 (les appels /api vont vers langitia-api sur le port 8080)
+npm run build     # construit le site dans dist/
+npm run check     # vérifie les types TypeScript et les fichiers .astro
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+Node.js 22.19 ou plus récent est recommandé (Node 24 LTS idéalement).

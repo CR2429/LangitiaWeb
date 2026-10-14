@@ -1,0 +1,42 @@
+---
+// Gabarit commun à toutes les pages du site.
+// Il contient tout ce qui sert au référencement (SEO) dans le <head>.
+
+interface Props {
+  title: string;          // titre de l'onglet et des résultats Google
+  description: string;    // résumé affiché sous le titre dans Google
+  noindex?: boolean;      // true = demander à Google de ne pas indexer la page
+}
+
+const { title, description, noindex = false } = Astro.props;
+
+// Adresse officielle de la page (ex : https://langitia.com/cartage/)
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex
+      ? <meta name="robots" content="noindex" />
+      : <link rel="canonical" href={canonical} />}
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#0e2a3b" />
+
+    <!-- Aperçu quand le lien est partagé (Discord, réseaux sociaux...) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Langitia" />
+    <meta property="og:locale" content="fr_CA" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

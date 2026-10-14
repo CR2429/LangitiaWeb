@@ -12,14 +12,13 @@ import {
 } from 'react-bootstrap-icons';
 
 import {
-  LocalFS,
-  FileNode,
   loadLocalFS,
   saveLocalFS,
   listFilesAtPath,
   normalizePath,
   LOCAL_FS_UPDATED_EVENT
 } from '../utils/FileSystem';
+import type { LocalFS, FileNode } from '../utils/FileSystem';
 
 type WindowData = {
   id: string;

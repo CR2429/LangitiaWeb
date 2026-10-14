@@ -1,0 +1,43 @@
+---
+// Page d'accueil : la page que Google indexe en priorité.
+// Le texte doit rester PUBLIC dans l'univers : aucun secret, aucune solution d'énigme.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/pages.css';
+---
+
+<BaseLayout
+  title="Langitia : l'univers des îles volantes et le système Cartage"
+  description="Langitia est un univers de fiction d'îles volantes, de magie et de techno-magie. Explorez CartageOS, un terminal du réseau Cartage, et reconstituez l'histoire fichier par fichier."
+>
+  <main class="page">
+    <h1>Langitia</h1>
+    <p class="sous-titre">Un univers d'îles volantes, de magie et de techno-magie.</p>
+
+    <p>
+      Langitia est un univers de fiction en construction depuis plusieurs années.
+      Ses îles flottent dans le ciel, chacune gouvernée par une fée divine avec sa propre politique.
+    </p>
+
+    <h2>Les cinq îles principales</h2>
+    <ul>
+      <li>l'île Langitia</li>
+      <li>Vierde</li>
+      <li>Lurminia</li>
+      <li>Cartage</li>
+      <li>Techniria</li>
+    </ul>
+
+    <h2>Le système Cartage</h2>
+    <p>
+      Le Cartage est une interface de communication techno-magique qui relie les crystaliens entre eux.
+      Ce site est un de ses terminaux : CartageOS. Les fichiers qu'il contient racontent l'histoire de Langitia,
+      à vous de les fouiller.
+    </p>
+
+    <a class="bouton" href="/cartage/">Ouvrir le terminal CartageOS</a>
+
+    <footer>
+      <a href="/protocoles_de_securite/">Protocoles de sécurité</a>
+    </footer>
+  </main>
+</BaseLayout>

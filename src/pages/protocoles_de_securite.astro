@@ -1,0 +1,27 @@
+---
+// Page des protocoles de sécurité.
+// Le texte est lu au moment du build depuis public/protocoles_de_securite/,
+// donc il est directement dans le HTML (lisible par Google).
+import fs from 'node:fs';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/pages.css';
+
+// Pour publier une nouvelle version : ajouter le fichier dans public/protocoles_de_securite/
+// puis changer cette ligne.
+const VERSION_ACTUELLE = 'v1.2.html';
+
+const contenu = fs.readFileSync(`public/protocoles_de_securite/${VERSION_ACTUELLE}`, 'utf-8');
+---
+
+<BaseLayout
+  title="Protocoles de sécurité | CartageOS"
+  description="Protocoles de sécurité du système CartageOS : surveillance réseau, tentatives d'intrusion et propriété intellectuelle de Langitia."
+>
+  <main class="page">
+    <Fragment set:html={contenu} />
+
+    <footer>
+      <a href="/">Retour à l'accueil</a>
+    </footer>
+  </main>
+</BaseLayout>

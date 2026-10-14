@@ -40,85 +40,49 @@ Ressources dont la structure ou le boilerplate ont servi de point de départ (li
 
 | Ressource | Licence | Usage dans le projet | Lien |
 |-----------|---------|----------------------|------|
-| **Vite** — template React + TypeScript | MIT | Structure initiale du client (`apps/web/`), configuration Vite, ESLint de base | [vitejs/vite](https://github.com/vitejs/vite) |
-| **React** | MIT | Framework UI du client | [facebook/react](https://github.com/facebook/react) |
+| **Astro** | MIT | Structure du site (pages, gabarit, build statique) | [withastro/astro](https://github.com/withastro/astro) |
+| **Vite** (template React + TypeScript) | MIT | Structure initiale du client, avant la migration vers Astro | [vitejs/vite](https://github.com/vitejs/vite) |
+| **React** | MIT | Bureau CartageOS (fenêtres, terminal, Cœur Élémentaire) | [facebook/react](https://github.com/facebook/react) |
 | **react-bootstrap-icons** (icônes dérivées de Bootstrap Icons) | MIT | Icônes dans l’interface CartageOS | [ismamz/react-bootstrap-icons](https://github.com/ismamz/react-bootstrap-icons) |
 | **Phosphor Icons** (`mouse-left-click`, `mouse-right-click`) | MIT | Aide visuelle Cœur Élémentaire (pivoter / déposer) | [phosphor-icons/core](https://github.com/phosphor-icons/core) |
 
 ---
 
-## Dépendances directes — serveur (racine)
+## Dépendances directes du site
 
-Packages déclarés dans le `package.json` racine. Chaque licence autorise l’utilisation dans un projet propriétaire ou open source, sous réserve de conserver les avis de copyright des auteurs originaux (inclus dans `node_modules/`).
+Packages déclarés dans `package.json`. Chaque licence autorise l’utilisation dans un projet propriétaire ou open source, sous réserve de conserver les avis de copyright des auteurs originaux (inclus dans `node_modules/`).
+
+Les dépendances de l’API et du bot Discord sont listées dans leurs propres dépôts (`langitia-api`, `langitia-bot`).
 
 | Package | Version déclarée | Licence | Dépôt |
 |---------|------------------|---------|-------|
-| bcryptjs | ^3.0.2 | BSD-3-Clause | [dcodeIO/bcrypt.js](https://github.com/dcodeIO/bcrypt.js) |
-| cors | ^2.8.5 | MIT | [expressjs/cors](https://github.com/expressjs/cors) |
-| discord.js | ^14.14.1 | Apache-2.0 | [discordjs/discord.js](https://github.com/discordjs/discord.js) |
-| dotenv | ^16.5.0 | BSD-2-Clause | [motdotla/dotenv](https://github.com/motdotla/dotenv) |
-| exceljs | ^4.4.0 | MIT | [exceljs/exceljs](https://github.com/exceljs/exceljs) |
-| express | ^4.21.2 | MIT | [expressjs/express](https://github.com/expressjs/express) |
-| express-rate-limit | ^7.5.0 | MIT | [express-rate-limit/express-rate-limit](https://github.com/express-rate-limit/express-rate-limit) |
-| helmet | ^8.1.0 | MIT | [helmetjs/helmet](https://github.com/helmetjs/helmet) |
-| jsonwebtoken | ^9.0.2 | MIT | [auth0/node-jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) |
-| luxon | ^3.6.1 | MIT | [moment/luxon](https://github.com/moment/luxon) |
+| astro | ^7.3.8 | MIT | [withastro/astro](https://github.com/withastro/astro) |
+| @astrojs/react | ^7.0.1 | MIT | [withastro/astro](https://github.com/withastro/astro) |
 | marked | ^15.0.12 | MIT | [markedjs/marked](https://github.com/markedjs/marked) |
-| moment-timezone | ^0.6.0 | MIT | [moment/moment-timezone](https://github.com/moment/moment-timezone) |
-| mysql2 | ^3.14.1 | MIT | [sidorares/node-mysql2](https://github.com/sidorares/node-mysql2) |
-| path | ^0.12.7 | MIT | [jinder/path](https://github.com/jinder/path) |
-| react-bootstrap-icons | ^1.11.6 | MIT | [ismamz/react-bootstrap-icons](https://github.com/ismamz/react-bootstrap-icons) |
-| uuid | ^11.1.1 | MIT | [uuidjs/uuid](https://github.com/uuidjs/uuid) |
-
-### Dépendances de développement — serveur
-
-| Package | Version déclarée | Licence | Dépôt |
-|---------|------------------|---------|-------|
-| @types/react | ^19.1.4 | MIT | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
-| concurrently | ^7.0.0 | MIT | [open-cli-tools/concurrently](https://github.com/open-cli-tools/concurrently) |
-
----
-
-## Dépendances directes — client
-
-| Package | Version déclarée | Licence | Dépôt |
-|---------|------------------|---------|-------|
 | react | ^19.0.0 | MIT | [facebook/react](https://github.com/facebook/react) |
-| react-bootstrap-icons | ^1.11.5 | MIT | [ismamz/react-bootstrap-icons](https://github.com/ismamz/react-bootstrap-icons) |
 | react-dom | ^19.0.0 | MIT | [facebook/react](https://github.com/facebook/react) |
-| react-router-dom | ^7.4.0 | MIT | [remix-run/react-router](https://github.com/remix-run/react-router) |
+| react-bootstrap-icons | ^1.11.5 | MIT | [ismamz/react-bootstrap-icons](https://github.com/ismamz/react-bootstrap-icons) |
 
-### Dépendances de développement — client
+### Dépendances de développement
 
 | Package | Version déclarée | Licence | Dépôt |
 |---------|------------------|---------|-------|
-| @eslint/js | ^9.21.0 | MIT | [eslint/eslint](https://github.com/eslint/eslint) |
+| @astrojs/check | ^0.9.10 | MIT | [withastro/astro](https://github.com/withastro/astro) |
+| @types/node | ^22 | MIT | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
 | @types/react | ^19.1.4 | MIT | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
 | @types/react-dom | ^19.1.5 | MIT | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
-| @vitejs/plugin-react-swc | ^3.8.0 | MIT | [vitejs/vite-plugin-react](https://github.com/vitejs/vite-plugin-react) |
-| concurrently | ^9.1.2 | MIT | [open-cli-tools/concurrently](https://github.com/open-cli-tools/concurrently) |
-| eslint | ^9.21.0 | MIT | [eslint/eslint](https://github.com/eslint/eslint) |
-| eslint-plugin-react-hooks | ^5.1.0 | MIT | [facebook/react](https://github.com/facebook/react) |
-| eslint-plugin-react-refresh | ^0.4.19 | MIT | [ArnaudBarre/eslint-plugin-react-refresh](https://github.com/ArnaudBarre/eslint-plugin-react-refresh) |
-| globals | ^15.15.0 | MIT | [sindresorhus/globals](https://github.com/sindresorhus/globals) |
-| typescript | ~5.7.2 | Apache-2.0 | [microsoft/TypeScript](https://github.com/microsoft/TypeScript) |
-| typescript-eslint | ^8.24.1 | MIT | [typescript-eslint/typescript-eslint](https://github.com/typescript-eslint/typescript-eslint) |
-| vite | ^6.2.0 | MIT | [vitejs/vite](https://github.com/vitejs/vite) |
+| typescript | ^6.0.3 | Apache-2.0 | [microsoft/TypeScript](https://github.com/microsoft/TypeScript) |
 
 ---
 
 ## Dépendances transitives
 
-Les packages ci-dessus entraînent des dépendances indirectes (Express → body-parser, Discord.js → @discordjs/*, ExcelJS → archiver, etc.). Leurs licences sont en majorité **MIT**, **ISC**, **BSD-2/3-Clause** ou **Apache-2.0**, toutes compatibles avec une utilisation dans ce projet.
+Les packages ci-dessus entraînent des dépendances indirectes (Astro → Vite, Rolldown, etc.). Leurs licences sont en majorité **MIT**, **ISC**, **BSD-2/3-Clause** ou **Apache-2.0**, toutes compatibles avec une utilisation dans ce projet.
 
 Pour régénérer la liste complète à partir de l’arborescence installée :
 
 ```bash
-# Serveur (racine)
-npx license-checker --production --csv --out licenses-server.csv
-
-# Client
-cd client && npx license-checker --production --csv --out licenses-client.csv
+npx license-checker --production --csv --out licenses-web.csv
 ```
 
 Les fichiers `licenses-*.csv` ne sont pas versionnés par défaut ; ils servent à l’audit ponctuel.
@@ -127,9 +91,7 @@ Les fichiers `licenses-*.csv` ne sont pas versionnés par défaut ; ils servent 
 
 | Package (transitif possible) | Licence | Note |
 |------------------------------|---------|------|
-| jszip (via exceljs) | MIT **ou** GPL-3.0-or-later | Usage courant sous branche **MIT** ; conserver l’avis de licence du package. |
-| bcryptjs | BSD-3-Clause | Conserver copyright et clause de non-garantie. |
-| discord.js / @discordjs/* | Apache-2.0 | Conserver NOTICE si redistribution du code source. |
+| typescript | Apache-2.0 | Outil de développement seulement, non distribué avec le site. |
 
 ---
 

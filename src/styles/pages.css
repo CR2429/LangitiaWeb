@@ -1,0 +1,71 @@
+/* Style des pages publiques (accueil, protocoles, 404).
+   Mêmes couleurs que CartageOS, mais avec défilement normal et texte lisible. */
+
+:root {
+  --bg-main: #0e2a3b;
+  --bg-panel: #14394f;
+  --highlight: #00ffd0;
+  --text-light: #9cf0f0;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg-main) 0%, var(--bg-panel) 100%);
+  color: var(--text-light);
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.6;
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 16px;
+}
+
+h1, h2 {
+  color: var(--highlight);
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 2.4rem;
+  margin-bottom: 0.2em;
+}
+
+a {
+  color: var(--highlight);
+}
+
+.sous-titre {
+  margin-top: 0;
+  opacity: 0.8;
+}
+
+.bouton {
+  display: inline-block;
+  margin: 24px 0;
+  padding: 12px 20px;
+  border: 2px solid var(--highlight);
+  border-radius: 8px;
+  color: var(--highlight);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.bouton:hover,
+.bouton:focus-visible {
+  background: var(--highlight);
+  color: var(--bg-main);
+}
+
+ul {
+  padding-left: 1.2em;
+}
+
+footer {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(156, 240, 240, 0.2);
+  font-size: 0.9rem;
+}

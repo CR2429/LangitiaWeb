@@ -1,0 +1,25 @@
+---
+// Le bureau CartageOS.
+// Tout le bureau (fenêtres, terminal, Cœur Élémentaire) est un composant React.
+// client:only="react" = il est affiché seulement dans le navigateur, pas pendant le build,
+// car il a besoin de localStorage et de la taille de la fenêtre.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Home from '../components/Home';
+import '../styles/cartage.css';
+---
+
+<BaseLayout
+  title="CartageOS | Terminal du système Cartage"
+  description="Terminal CartageOS : fouillez les fichiers du réseau Cartage pour reconstituer l'histoire de Langitia."
+>
+  <div id="root">
+    <Home client:only="react" />
+  </div>
+
+  <!-- Affiché seulement si JavaScript est désactivé -->
+  <noscript>
+    <p style="color: #9cf0f0; padding: 16px;">
+      CartageOS a besoin de JavaScript. <a href="/" style="color: #00ffd0;">Retour à l'accueil</a>
+    </p>
+  </noscript>
+</BaseLayout>

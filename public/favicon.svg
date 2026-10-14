@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Cristal cyan sur fond bleu nuit (couleurs de CartageOS) -->
+  <rect width="64" height="64" rx="12" fill="#0e2a3b"/>
+  <polygon points="32,6 50,26 32,58 14,26" fill="#00ffd0" fill-opacity="0.25" stroke="#00ffd0" stroke-width="3" stroke-linejoin="round"/>
+  <polyline points="14,26 32,32 50,26" fill="none" stroke="#00ffd0" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="32" y1="32" x2="32" y2="58" stroke="#00ffd0" stroke-width="2"/>
+</svg>

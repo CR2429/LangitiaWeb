@@ -30,7 +30,7 @@ const MenuBar = ({ onOpenTerminal, onOpenLogin, onOpenEditText, onOpenElementHea
         </span>
       </button>
       <button
-        onClick={() => window.open('/protocoles_de_securite', '_blank')}
+        onClick={() => window.open('/protocoles_de_securite/', '_blank')}
         title="Protocoles de sécurité"
       >
         <span className="icon-stack">

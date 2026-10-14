@@ -1,5 +1,5 @@
 // Terminal.tsx
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './Terminal.css';
 import {
   loadLocalFS,
@@ -8,19 +8,9 @@ import {
   directoryExists,
   normalizePath,
   parentPath,
-  getFullPath,
-  FileNode,
-  LocalFS
+  getFullPath
 } from '../utils/FileSystem';
-
-// Id draggable, au cas où tu veux t'en servir plus tard
-const useDraggableId = () => {
-  return useMemo(() => {
-    const p = new URLSearchParams(window.location.search);
-    const v = Number(p.get('draggableId'));
-    return Number.isFinite(v) ? v : undefined;
-  }, []);
-};
+import type { FileNode, LocalFS } from '../utils/FileSystem';
 
 const Terminal: React.FC = () => {
   const [username] = useState(() => localStorage.getItem('authUser') || 'unlog');
@@ -40,7 +30,6 @@ const Terminal: React.FC = () => {
 
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
-  const draggableId = useDraggableId();
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {

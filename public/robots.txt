@@ -1,0 +1,5 @@
+# Les robots (Google...) peuvent tout lire, sauf l'API
+User-agent: *
+Disallow: /api/
+
+Sitemap: https://langitia.com/sitemap.xml

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Liste des pages à indexer. Ajouter une ligne <url> pour chaque nouvelle page publique. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://langitia.com/</loc></url>
+  <url><loc>https://langitia.com/cartage/</loc></url>
+  <url><loc>https://langitia.com/protocoles_de_securite/</loc></url>
+</urlset>
