@@ -3,7 +3,9 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db");
 
 const router = express.Router();
-const SECRET = process.env.JWT_TOKEN_KEY || "cartage_secret_key";
+// Clé réservée aux jetons VISITEUR (différente de la clé admin JWT_TOKEN_KEY).
+// Pas de valeur de secours : server.js refuse de démarrer si elle manque.
+const SECRET = process.env.VISITOR_TOKEN_KEY;
 
 // =====================================================
 // 🔧 UTILITAIRES

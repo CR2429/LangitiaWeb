@@ -20,16 +20,23 @@ router.post('/login', loginLimiter, async (req, res) => {
         const [rows] = await pool.query('SELECT * FROM users WHERE user = ?', [user]);
         const dbUser = rows[0];
 
+        // Même message dans les deux cas : on ne dit pas à un attaquant
+        // si c'est le nom ou le mot de passe qui est faux.
         if (!dbUser) {
-            return res.status(401).json({ message: 'Utilisateur non trouvé' });
+            return res.status(401).json({ message: 'Identifiants incorrects' });
         }
 
         const isValid = await bcrypt.compare(password, dbUser.password);
         if (!isValid) {
-            return res.status(401).json({ message: 'Mot de passe incorrect' });
+            return res.status(401).json({ message: 'Identifiants incorrects' });
         }
 
-        const token = jwt.sign({ userId: dbUser.id }, SECRET_KEY);
+        // Jeton admin : role 'admin' + expiration après 12 heures
+        const token = jwt.sign(
+            { userId: dbUser.id, role: 'admin' },
+            SECRET_KEY,
+            { expiresIn: '12h' }
+        );
         res.json({ message: 'Connexion réussie', token });
     } catch (err) {
         console.error(err);

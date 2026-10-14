@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
+const cleanPayload = require('../utils/cleanPayload');
 
 module.exports = async (req, res, next) => {
   // Ignorer la racine "/"
@@ -8,50 +9,45 @@ module.exports = async (req, res, next) => {
     return next();
   }
 
-  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  // Ignorer la synchronisation : chaque visiteur l'appelle toutes les
+  // 10 secondes, ça remplirait la table pour rien.
+  if (path.startsWith('/sync')) {
+    return next();
+  }
+
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const method = req.method;
   const endpoint = req.originalUrl;
   const timestamp = new Date();
   const userAgent = req.headers['user-agent'] || '';
 
+  // Si la requête vient de l'admin connecté, on note son id
   let userId = null;
-
-  // Tentative d'extraction du token
   const authHeader = req.headers['authorization'];
-  
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      userId = decoded.id; // 🧠 Assure-toi que `id` est bien dans le payload JWT
+      const decoded = jwt.verify(token, process.env.JWT_TOKEN_KEY);
+      userId = decoded.userId || null;
     } catch (err) {
-      console.warn('❌ Token JWT invalide ou expiré dans logIp');
+      // Jeton invalide ou jeton visiteur : on log sans id, ce n'est pas une erreur
     }
   }
 
-  // Récupérer la charge utile si c'est un POST, PUT, PATCH
+  // Corps de la requête (POST, PUT, PATCH), SANS les mots de passe
   let payload = null;
   if (['POST', 'PUT', 'PATCH'].includes(method)) {
-    try {
-      // On stringify le body proprement
-      payload = JSON.stringify(req.body);
-      // Attention si très gros payloads
-      if (payload.length > 2000) {
-        payload = payload.slice(0, 2000) + '... (truncated)';
-      }
-    } catch (err) {
-      payload = '⚠️ Erreur lecture body';
-    }
+    payload = cleanPayload(req.body);
   }
 
   try {
     await pool.query(
       `INSERT INTO access_logs (
-         ip_address, 
-         method, 
-         endpoint, 
-         timestamp, 
-         user_id, 
+         ip_address,
+         method,
+         endpoint,
+         timestamp,
+         user_id,
          user_agent,
          payload
        )

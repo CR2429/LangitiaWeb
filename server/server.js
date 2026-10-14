@@ -1,5 +1,19 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
+// Vérifie que toutes les variables obligatoires sont dans le .env.
+// Sans elles, le serveur serait vulnérable ou planterait plus tard : on arrête tout de suite.
+const VARIABLES_OBLIGATOIRES = ['JWT_TOKEN_KEY', 'VISITOR_TOKEN_KEY', 'DB_PASSWORD', 'AUTHORIZED_TOKEN'];
+for (const nom of VARIABLES_OBLIGATOIRES) {
+  if (!process.env[nom]) {
+    console.error(`❌ Variable manquante dans le .env : ${nom}. Arrêt du serveur.`);
+    process.exit(1);
+  }
+}
+if (process.env.JWT_TOKEN_KEY === process.env.VISITOR_TOKEN_KEY) {
+  console.error('❌ JWT_TOKEN_KEY et VISITOR_TOKEN_KEY doivent être différentes. Arrêt du serveur.');
+  process.exit(1);
+}
+
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -8,8 +22,6 @@ const helmet = require('helmet');
 
 // gestion des differents element du serveur
 const authRoutes = require('./routes/authRoutes');
-const fileRoutes = require('./routes/fileRoutes');
-const terminalRoutes = require('./routes/terminalRoutes');
 const raspberryRoutes = require('./routes/raspberryRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 
@@ -33,8 +45,6 @@ resetUsersOnStartup();
 // redirection des routes
 app.use('/api', logIpMiddleware);
 app.use('/api', authRoutes);
-app.use('/api', fileRoutes);
-app.use('/api', terminalRoutes);
 app.use('/api', raspberryRoutes);
 app.use('/api/sync', syncRoutes);
 

@@ -7,10 +7,10 @@ const moment = require('moment-timezone');
 const envPath = __dirname + '/../../.env';
 require('dotenv').config({ path: envPath });
 
-//log
+// On vérifie seulement que le .env existe.
+// NE JAMAIS afficher son contenu : les logs (PM2) gardent tout en clair.
 if (fs.existsSync(envPath)) {
   console.log("✅ Le fichier .env existe");
-  console.log("📄 Contenu du .env :\n" + fs.readFileSync(envPath, 'utf8'));
 } else {
   console.log("❌ Le fichier .env est introuvable !");
 }
@@ -113,6 +113,6 @@ client.once(Events.ClientReady, async () => {
 setupButtonInteraction(client);
 
 
+// On affiche seulement si le token est présent, jamais sa valeur
 console.log("Token détecté ?", process.env.TOKEN_DISCORD ? "Oui" : "Non");
-console.log("Token brut : [" + process.env.TOKEN_DISCORD + "]");
 client.login(process.env.TOKEN_DISCORD);
